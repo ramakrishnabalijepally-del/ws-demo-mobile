@@ -5,9 +5,10 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
-# Needed to publish the APK onto a GitHub Release.
+# Read-only: the APK is kept as a private build artifact, never published
+# to a public release.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: "apk"
@@ -45,19 +46,11 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/worksettle-demo.apk
 
+      # Kept as a workflow artifact only, downloadable from the Actions run by
+      # someone with repo access. The APK is handed to clients as a file, so
+      # it is deliberately not attached to a public release.
       - uses: actions/upload-artifact@v4
         with:
           name: worksettle-demo-apk
           path: dist/worksettle-demo.apk
-
-      # A rolling release under a fixed tag, so the download link never
-      # changes as the demo is rebuilt.
-      - name: Publish to the rolling demo release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create demo-latest \
-            --title "WorkSettle — demo APK" \
-            --notes "Latest Android build of the WorkSettle mock demo. Install on an Android phone and allow installation from unknown sources when prompted. Rebuilt automatically from \`main\`." \
-            || echo "release already exists, updating it"
-          gh release upload demo-latest dist/worksettle-demo.apk --clobber
+          retention-days: 30
