@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
+import '../../../../../shared/utils/pnp_matcher.dart';
+import '../../../controllers/stream_matches.dart';
 import '../../../data/mock_immigration.dart';
-import '../widgets/province_mark.dart';
 
 /// J10 — the province list.
 ///
@@ -14,11 +16,12 @@ import '../widgets/province_mark.dart';
 /// does not, and section 7 makes province marks the one full-colour imagery
 /// allowed in an icon slot — in a 40 px rounded square with a hairline, never
 /// recoloured and never cropped to a circle.
-class PnpProvincesScreen extends StatelessWidget {
+class PnpProvincesScreen extends ConsumerWidget {
   const PnpProvincesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matches = ref.watch(streamMatchesProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Provincial Programs')),
       body: ListView(
@@ -41,10 +44,17 @@ class PnpProvincesScreen extends StatelessWidget {
           ),
           for (final province in mockProvinces) ...[
             WsListRow(
-              leading: ProvinceMark(abbreviation: province.abbreviation),
+              leading: WsProvinceMark(
+                code: province.abbreviation,
+                label: province.name,
+              ),
               title: province.name,
               subtitle: province.programName,
-              trailing: province.streams.any((s) => s.matched)
+              trailing: matches.any(
+                (m) =>
+                    m.province.abbreviation == province.abbreviation &&
+                    m.assessment.lines,
+              )
                   ? const WsVerdictChip(
                       verdict: WsVerdict.eligible,
                       label: 'Match',
@@ -66,13 +76,14 @@ class PnpProvincesScreen extends StatelessWidget {
 }
 
 /// J11 — the streams within one province.
-class PnpStreamsScreen extends StatelessWidget {
+class PnpStreamsScreen extends ConsumerWidget {
   const PnpStreamsScreen({required this.provinceCode, super.key});
 
   final String provinceCode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matches = ref.watch(streamMatchesProvider);
     final province =
         mockProvinces.where((p) => p.abbreviation == provinceCode).firstOrNull;
 
@@ -101,7 +112,7 @@ class PnpStreamsScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              ProvinceMark(abbreviation: province.abbreviation),
+              WsProvinceMark(code: province.abbreviation, label: province.name),
               const SizedBox(width: WsSpacing.md),
               Expanded(
                 child: Column(
@@ -144,11 +155,15 @@ class PnpStreamsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: WsSpacing.md),
-                        WsVerdictChip(
-                          verdict: stream.matched
-                              ? WsVerdict.eligible
-                              : WsVerdict.potential,
-                          label: stream.matched ? 'Good Match' : 'Potential',
+                        Builder(
+                          builder: (context) {
+                            final fit =
+                                assessmentFor(matches, province, stream).fit;
+                            return WsVerdictChip(
+                              verdict: _verdictOf(fit),
+                              label: fit.label,
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -171,7 +186,7 @@ class PnpStreamsScreen extends StatelessWidget {
 }
 
 /// J12–J13 — one stream: what it asks for, and where the candidate stands.
-class PnpStreamDetailScreen extends StatelessWidget {
+class PnpStreamDetailScreen extends ConsumerWidget {
   const PnpStreamDetailScreen({
     required this.provinceCode,
     required this.streamName,
@@ -182,7 +197,8 @@ class PnpStreamDetailScreen extends StatelessWidget {
   final String streamName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matches = ref.watch(streamMatchesProvider);
     final province =
         mockProvinces.where((p) => p.abbreviation == provinceCode).firstOrNull;
     final stream = province?.streams
@@ -201,6 +217,8 @@ class PnpStreamDetailScreen extends StatelessWidget {
         ),
       );
     }
+
+    final assessment = assessmentFor(matches, province, stream);
 
     return Scaffold(
       appBar: AppBar(title: Text(province.abbreviation)),
@@ -234,22 +252,23 @@ class PnpStreamDetailScreen extends StatelessWidget {
                         style: context.text.titleMedium,
                       ),
                     ),
-                    WsVerdictChip(
-                      verdict: stream.matched
-                          ? WsVerdict.eligible
-                          : WsVerdict.potential,
-                      label: stream.matched ? 'Good Match' : 'Potential Match',
+                    // The verdict lands a beat after the screen, so it reads
+                    // as considered rather than stamped on.
+                    WsAppear(
+                      delay: 0.5,
+                      duration: WsMotion.focal,
+                      fromScale: 0.85,
+                      distance: 0,
+                      child: WsVerdictChip(
+                        verdict: _verdictOf(assessment.fit),
+                        label: assessment.fit.label,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: WsSpacing.md),
                 Text(
-                  stream.matched
-                      ? 'On the information you have given, your profile meets '
-                          'the published criteria for this stream.'
-                      : 'This one depends on something not yet in your profile '
-                          '— usually a job offer or Canadian experience. It is '
-                          'not closed to you.',
+                  _explain(assessment),
                   style: context.text.bodyMedium,
                 ),
                 const SizedBox(height: WsSpacing.md),
@@ -299,11 +318,11 @@ class PnpStreamDetailScreen extends StatelessWidget {
 }
 
 /// J14 — federal programs, and the comparison.
-class ProgramsScreen extends StatelessWidget {
+class ProgramsScreen extends ConsumerWidget {
   const ProgramsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('Federal Programs')),
       body: ListView(
@@ -325,6 +344,10 @@ class ProgramsScreen extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Federal programs carry the country mark, the way a
+                        // provincial stream carries its province's.
+                        const WsProvinceMark.canada(),
+                        const SizedBox(width: WsSpacing.md),
                         Expanded(
                           child: Text(
                             program.name,
@@ -363,16 +386,12 @@ class ProgramsScreen extends StatelessWidget {
 }
 
 /// The compare screen — the same programs, read across rather than down.
-class CompareScreen extends StatelessWidget {
+class CompareScreen extends ConsumerWidget {
   const CompareScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final matchedStreams = [
-      for (final province in mockProvinces)
-        for (final stream in province.streams)
-          if (stream.matched) (province: province, stream: stream),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matchedStreams = ref.watch(liningUpStreamsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Compare options')),
@@ -409,7 +428,10 @@ class CompareScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    ProvinceMark(abbreviation: match.province.abbreviation),
+                    WsProvinceMark(
+                      code: match.province.abbreviation,
+                      label: match.province.name,
+                    ),
                     const SizedBox(width: WsSpacing.md),
                     Expanded(
                       child: Column(
@@ -443,4 +465,38 @@ class CompareScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The verdict chip for a fit. The ladder is filled → outlined → tinted, and
+/// there is no fourth rung.
+WsVerdict _verdictOf(StreamFit fit) => switch (fit) {
+      StreamFit.good => WsVerdict.eligible,
+      StreamFit.potential => WsVerdict.potential,
+      StreamFit.explore => WsVerdict.explore,
+    };
+
+/// What the verdict means, in the candidate's own terms.
+///
+/// **Never a refusal.** Where something is missing it is named as the thing
+/// that would close it, and where the profile simply cannot answer, that is
+/// said plainly rather than held against the reader.
+String _explain(StreamAssessment assessment) {
+  final unknowns = assessment.unknowns.map((u) => u.description).toList();
+  return switch (assessment.fit) {
+    StreamFit.good =>
+      'On the information you have given, your profile meets every published '
+          'criterion for this stream that WorkSettle can check.',
+    StreamFit.potential =>
+      'Everything WorkSettle can check from your profile is met. This stream '
+          'also asks for ${_join(unknowns)}, which is not something a profile '
+          'can answer — so it stays open rather than confirmed.',
+    StreamFit.explore => 'This one is not closed to you. What would move it: '
+        '${_join(assessment.gaps)}.',
+  };
+}
+
+String _join(List<String> parts) {
+  if (parts.isEmpty) return 'something outside your profile';
+  if (parts.length == 1) return parts.single;
+  return '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
 }

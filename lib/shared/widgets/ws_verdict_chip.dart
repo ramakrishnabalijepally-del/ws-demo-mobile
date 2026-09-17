@@ -91,7 +91,11 @@ class WsVerdictChip extends StatelessWidget {
               color: foreground,
             ),
             const SizedBox(width: 5),
-            Text(label, style: WsTypography.chip(foreground)),
+            // Flexible so a long verdict wraps inside a narrow card at large
+            // text sizes instead of running out of the pill.
+            Flexible(
+              child: Text(label, style: WsTypography.chip(foreground)),
+            ),
           ],
         ),
       ),
@@ -110,6 +114,12 @@ class WsBadge extends StatelessWidget {
         _red = true;
 
   const WsBadge.saving({required this.label, super.key}) : _red = false;
+
+  /// A posting from the last 48 hours. Red for the same reason as Most
+  /// Popular: it is the product pointing at something, not a verdict.
+  const WsBadge.fresh({super.key})
+      : label = 'New',
+        _red = true;
 
   final String label;
   final bool _red;

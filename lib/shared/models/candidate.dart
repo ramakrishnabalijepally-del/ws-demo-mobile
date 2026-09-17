@@ -1,8 +1,23 @@
+import 'crs_profile.dart';
+import 'immigration_details.dart';
+import 'profile_section.dart';
+
+/// What the candidate is here for, in the order registration offers them.
+///
+/// Registration asks this on its own step, with a blurb under each option;
+/// the profile form asks the same question with the same three answers, so
+/// the vocabulary lives here rather than inside either feature.
+const List<String> candidateProfileTypes = ['Job Seeker', 'Student', 'Other'];
+
 /// The signed-in candidate.
 ///
 /// The candidate is the only role this app builds (`docs/PLAN.md` section 1) —
 /// there is no employer, consultant or admin model, and adding one is a scope
 /// change, not a refactor.
+///
+/// **The profile is the base of the app.** Profile strength and the CRS score
+/// are both calculated from it rather than stored beside it, so they can never
+/// disagree with what the candidate has entered.
 class Candidate {
   const Candidate({
     required this.firstName,
@@ -14,11 +29,12 @@ class Candidate {
     required this.city,
     required this.province,
     required this.countryOfOrigin,
-    required this.profileStrength,
     required this.verified,
     required this.profileType,
     required this.goals,
     required this.jobCategories,
+    required this.crs,
+    this.immigration = const ImmigrationDetails(),
     this.avatarUrl,
   });
 
@@ -35,16 +51,19 @@ class Candidate {
   final String province;
   final String countryOfOrigin;
 
-  /// 0–100. Rendered by the one ring in the product.
-  final int profileStrength;
-
   final bool verified;
 
-  /// Job Seeker · Student · Other.
+  /// One of [candidateProfileTypes].
   final String profileType;
 
   final List<String> goals;
   final List<String> jobCategories;
+
+  /// Everything the CRS score is calculated from.
+  final CrsProfile crs;
+
+  /// Passport and status in Canada — the immigration profile beyond the CRS.
+  final ImmigrationDetails immigration;
 
   // TODO(assets): the design deck uses photography here. Null renders initials.
   final String? avatarUrl;
@@ -53,6 +72,12 @@ class Candidate {
 
   String get initials => '${firstName.isEmpty ? '' : firstName[0]}'
       '${lastName.isEmpty ? '' : lastName[0]}';
+
+  DateTime? get birthDate => DateTime.tryParse(dateOfBirth);
+
+  /// 0–100: how much of the profile the CRS needs has been answered.
+  int get profileStrength =>
+      completionOf(crs, hasDateOfBirth: birthDate != null).percent;
 
   Candidate copyWith({
     String? firstName,
@@ -64,11 +89,12 @@ class Candidate {
     String? city,
     String? province,
     String? countryOfOrigin,
-    int? profileStrength,
     bool? verified,
     String? profileType,
     List<String>? goals,
     List<String>? jobCategories,
+    CrsProfile? crs,
+    ImmigrationDetails? immigration,
     String? avatarUrl,
   }) {
     return Candidate(
@@ -81,11 +107,12 @@ class Candidate {
       city: city ?? this.city,
       province: province ?? this.province,
       countryOfOrigin: countryOfOrigin ?? this.countryOfOrigin,
-      profileStrength: profileStrength ?? this.profileStrength,
       verified: verified ?? this.verified,
       profileType: profileType ?? this.profileType,
       goals: goals ?? this.goals,
       jobCategories: jobCategories ?? this.jobCategories,
+      crs: crs ?? this.crs,
+      immigration: immigration ?? this.immigration,
       avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }

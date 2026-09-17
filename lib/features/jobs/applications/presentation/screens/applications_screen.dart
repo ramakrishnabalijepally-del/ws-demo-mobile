@@ -113,15 +113,28 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen> {
                     itemCount: applications.length,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: WsSpacing.md),
-                    itemBuilder: (context, i) => _ApplicationCard(
-                      application: applications[i],
-                      onTap: () => context.push(
-                        Routes.withId(
-                          Routes.applicationDetail,
-                          applications[i].id,
+                    itemBuilder: (context, i) {
+                      final card = _ApplicationCard(
+                        application: applications[i],
+                        onTap: () => context.push(
+                          Routes.withId(
+                            Routes.applicationDetail,
+                            applications[i].id,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                      // Only the first screenful rises in, keyed by
+                      // application so switching the stage filter refreshes
+                      // the list visibly.
+                      return i < 6
+                          ? WsAppear(
+                              key: ValueKey(applications[i].id),
+                              delay: i * 0.1,
+                              duration: WsMotion.focal,
+                              child: card,
+                            )
+                          : card;
+                    },
                   ),
           ),
         ],

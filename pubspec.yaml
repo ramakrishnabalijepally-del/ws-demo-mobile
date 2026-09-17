@@ -25,6 +25,15 @@ flutter:
     - assets/images/hero_jobs.jpg
     - assets/images/hero_profile.jpg
     - assets/images/hero_success.jpg
+    - assets/images/hero_immigration.jpg
+    - assets/images/hero_job_portal.jpg
+    - assets/images/hero_user_profile.jpg
+    - assets/images/hero_language.jpg
+    - assets/images/tile_immigration.jpg
+    - assets/images/tile_jobs.jpg
+    - assets/images/worksettle_logo.png
+    - assets/images/provinces/
+    - assets/images/countries/
 
   # Plus Jakarta Sans — the design system's one family (design/worksettle-design-system.md section 4).
   # TODO(assets): drop the four .ttf weights into assets/fonts/ and uncomment.

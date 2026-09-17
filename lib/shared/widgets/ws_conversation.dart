@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/theme.dart';
 import 'ws_buttons.dart';
+import 'ws_rise_in.dart';
 
 enum WsSpeaker {
   /// Ink fill, surface-coloured text, right-aligned, 16/16/4/16.
@@ -80,19 +81,27 @@ class WsChatBubble extends StatelessWidget {
       ),
     );
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: WsSpacing.md),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser && avatar != null) ...[
-            avatar!,
-            const SizedBox(width: WsSpacing.sm),
+    // Each bubble eases in once, growing from its own tail corner, as it joins
+    // the thread.
+    return WsAppear(
+      duration: WsMotion.medium,
+      distance: WsSpacing.sm,
+      fromScale: 0.96,
+      alignment: isUser ? Alignment.bottomRight : Alignment.bottomLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: WsSpacing.md),
+        child: Row(
+          mainAxisAlignment:
+              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isUser && avatar != null) ...[
+              avatar!,
+              const SizedBox(width: WsSpacing.sm),
+            ],
+            Flexible(child: bubble),
           ],
-          Flexible(child: bubble),
-        ],
+        ),
       ),
     );
   }
@@ -340,7 +349,11 @@ class WsPresence extends StatelessWidget {
           ),
         ),
         const SizedBox(width: WsSpacing.sm),
-        Text(label, style: WsTypography.micro(context.ws.caption)),
+        // Flexible so a longer label wraps instead of running off a small
+        // phone; a short one ("Online") still sizes the row to its text.
+        Flexible(
+          child: Text(label, style: WsTypography.micro(context.ws.caption)),
+        ),
       ],
     );
   }

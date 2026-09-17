@@ -18,8 +18,9 @@ class SettlementScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const WsProfileButton(),
+        leadingWidth: WsTouch.minTarget + WsSpacing.md,
         title: const Text('Settlement'),
-        actions: const [WsThemeToggle()],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -78,18 +79,20 @@ class SettlementScreen extends StatelessWidget {
             child: Column(
               children: [
                 WsListRow(
-                  leading:
-                      const WsIconTile(icon: Icons.event_available_rounded),
-                  title: 'Appointments',
-                  subtitle: 'Consultations with licensed RCICs',
-                  onTap: () => context.push(Routes.appointments),
-                ),
-                Divider(color: context.colors.outlineVariant, height: 1),
-                WsListRow(
                   leading: const WsIconTile(icon: Icons.menu_book_rounded),
                   title: 'Resources',
                   subtitle: 'Housing, money, health, language',
                   onTap: () => context.push(Routes.resources),
+                ),
+                Divider(color: context.colors.outlineVariant, height: 1),
+                // Booking a consultant moved to the AI agent, which is what
+                // works out that you need one. The row stays here so the path
+                // from Settlement is not a dead end.
+                WsListRow(
+                  leading: const WsIconTile(icon: Icons.auto_awesome_rounded),
+                  title: 'Book a consultation',
+                  subtitle: 'Licensed RCICs, through the AI agent',
+                  onTap: () => context.push(Routes.appointments),
                 ),
               ],
             ),
@@ -133,9 +136,28 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 '${_done.length} of ${mockChecklist.length} steps done',
           ),
           const SizedBox(height: WsSpacing.sm),
-          Text(
-            '${_done.length} of ${mockChecklist.length} done',
-            style: context.text.bodySmall?.copyWith(color: context.ws.caption),
+          // The count rolls to its new value as the meter above glides.
+          AnimatedSwitcher(
+            duration: WsMotion.duration(context, WsMotion.medium),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: animation.drive(
+                  Tween(begin: const Offset(0, 0.4), end: Offset.zero),
+                ),
+                child: child,
+              ),
+            ),
+            layoutBuilder: (current, previous) => Stack(
+              alignment: Alignment.centerLeft,
+              children: [...previous, if (current != null) current],
+            ),
+            child: Text(
+              '${_done.length} of ${mockChecklist.length} done',
+              key: ValueKey(_done.length),
+              style:
+                  context.text.bodySmall?.copyWith(color: context.ws.caption),
+            ),
           ),
           const SizedBox(height: WsSpacing.xxl),
           for (final phase in ChecklistPhase.values) ...[
@@ -210,13 +232,22 @@ class _ChecklistRow extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: done
-                    ? Icon(
-                        Icons.check_rounded,
-                        size: 12,
-                        color: context.colors.surface,
-                      )
-                    : null,
+                // The tick pops in when an item is done — a small reward for a
+                // real step forward.
+                child: AnimatedSwitcher(
+                  duration: WsMotion.duration(context, WsMotion.medium),
+                  switchInCurve: Curves.easeOutBack,
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: done
+                      ? Icon(
+                          Icons.check_rounded,
+                          key: const ValueKey(true),
+                          size: 12,
+                          color: context.colors.surface,
+                        )
+                      : const SizedBox.shrink(key: ValueKey(false)),
+                ),
               ),
               const SizedBox(width: WsSpacing.md),
               Expanded(
@@ -248,246 +279,6 @@ class _ChecklistRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// K3 — the consultation list.
-class AppointmentsScreen extends StatelessWidget {
-  const AppointmentsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Appointments')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          WsSpacing.xl,
-          WsSpacing.lg,
-          WsSpacing.xl,
-          WsSpacing.xxxl,
-        ),
-        children: [
-          WsBanner(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Talk to a licensed consultant',
-                  style: context.text.titleMedium,
-                ),
-                const SizedBox(height: WsSpacing.xs),
-                Text(
-                  'Every consultant here is a Regulated Canadian Immigration '
-                  'Consultant in good standing. WorkSettle does not give legal '
-                  'advice; they do.',
-                  style: context.text.bodySmall
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: WsSpacing.xl),
-          for (final consultation in mockConsultations)
-            Padding(
-              padding: const EdgeInsets.only(bottom: WsSpacing.md),
-              child: WsCard(
-                onTap: () => context.push(
-                  Routes.withId(Routes.appointmentDetail, consultation.id),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(consultation.title, style: context.text.titleMedium),
-                    const SizedBox(height: WsSpacing.xs),
-                    Text(
-                      consultation.summary,
-                      style: context.text.bodySmall
-                          ?.copyWith(color: context.ws.caption),
-                    ),
-                    const SizedBox(height: WsSpacing.md),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.schedule_outlined,
-                          size: 14,
-                          color: context.ws.placeholder,
-                        ),
-                        const SizedBox(width: WsSpacing.xs + 2),
-                        Text(
-                          '${consultation.minutes} min',
-                          style: context.text.bodySmall
-                              ?.copyWith(color: context.ws.caption),
-                        ),
-                        const Spacer(),
-                        Text(
-                          consultation.price == 0
-                              ? 'Free'
-                              : '\$${consultation.price}',
-                          style: context.text.titleMedium,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// K4 — one consultation, and booking it.
-class AppointmentDetailScreen extends StatelessWidget {
-  const AppointmentDetailScreen({required this.consultationId, super.key});
-
-  final String consultationId;
-
-  @override
-  Widget build(BuildContext context) {
-    final consultation =
-        mockConsultations.where((c) => c.id == consultationId).firstOrNull;
-
-    if (consultation == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Appointments')),
-        body: WsEmptyState(
-          icon: Icons.event_busy_outlined,
-          headline: 'That consultation is not available',
-          body: 'The list of what we currently offer is one screen back.',
-          actionLabel: 'Back to appointments',
-          onAction: () => context.pop(),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Book a consultation')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          WsSpacing.xl,
-          WsSpacing.lg,
-          WsSpacing.xl,
-          WsSpacing.huge,
-        ),
-        children: [
-          Text(consultation.title, style: context.text.headlineLarge),
-          const SizedBox(height: WsSpacing.md),
-          Text(
-            consultation.summary,
-            style: context.text.bodyMedium
-                ?.copyWith(color: context.colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: WsSpacing.xl),
-          WsCard(
-            child: Row(
-              children: [
-                const WsIconTile(icon: Icons.verified_user_rounded),
-                const SizedBox(width: WsSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        consultation.consultant,
-                        style: context.text.titleMedium,
-                      ),
-                      Text(
-                        consultation.credential,
-                        style: context.text.bodySmall
-                            ?.copyWith(color: context.ws.caption),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: WsSpacing.md),
-          WsCard(
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Length',
-                        style: context.text.bodyMedium
-                            ?.copyWith(color: context.ws.caption),
-                      ),
-                    ),
-                    Text(
-                      '${consultation.minutes} minutes',
-                      style: context.text.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-                Divider(
-                  color: context.colors.outlineVariant,
-                  height: WsSpacing.xxl,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Price',
-                        style: context.text.bodyMedium
-                            ?.copyWith(color: context.ws.caption),
-                      ),
-                    ),
-                    Text(
-                      consultation.price == 0
-                          ? 'Free'
-                          : '\$${consultation.price} CAD',
-                      style: context.text.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            WsSpacing.xl,
-            WsSpacing.md,
-            WsSpacing.xl,
-            WsSpacing.lg,
-          ),
-          child: WsPrimaryButton(
-            label: 'Book this',
-            // TODO(backend): no calendar, no payment. This goes straight to the
-            // confirmation so the flow is walkable.
-            onPressed: () => context.push(Routes.appointmentBooked),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// K5 — booking confirmed.
-class AppointmentBookedScreen extends StatelessWidget {
-  const AppointmentBookedScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return WsSuccessScreen(
-      // A booking is a transaction settled, so it takes the filled ink disc.
-      milestone: WsMilestone.settled,
-      headline: 'Your consultation is booked',
-      body: 'You will get a calendar invitation and a reminder the day before. '
-          'Bring your questions written down — the time goes quickly.',
-      primaryLabel: 'Back to Settlement',
-      onPrimary: () => context.go(Routes.settlement),
     );
   }
 }

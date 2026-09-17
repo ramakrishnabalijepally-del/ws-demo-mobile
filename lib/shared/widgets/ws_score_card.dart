@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/theme.dart';
+import 'ws_buttons.dart';
 import 'ws_progress.dart';
+import 'ws_rise_in.dart';
 import 'ws_surfaces.dart';
 import 'ws_verdict_chip.dart';
 
@@ -87,10 +89,24 @@ class WsScoreCard extends StatelessWidget {
                         style: context.text.bodySmall
                             ?.copyWith(color: context.ws.caption),
                       ),
+                    const SizedBox(height: WsSpacing.sm),
+                    // Under the title rather than beside it: the longer
+                    // verdicts ("Potential Options") and 200% text left the
+                    // title no room on a 360 dp phone. It lands last, after
+                    // the number has counted up, so it reads as the
+                    // conclusion rather than a label.
+                    WsAppear(
+                      delay: 0.6,
+                      duration: WsMotion.focal,
+                      fromScale: 0.85,
+                      distance: 0,
+                      alignment: Alignment.centerLeft,
+                      child:
+                          WsVerdictChip(verdict: verdict, label: verdictLabel),
+                    ),
                   ],
                 ),
               ),
-              WsVerdictChip(verdict: verdict, label: verdictLabel),
             ],
           ),
           const SizedBox(height: WsSpacing.lg),
@@ -98,7 +114,23 @@ class WsScoreCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('$value', style: context.text.displaySmall),
+              // Counts up from zero on arrival; screen readers get the final
+              // figure only.
+              Semantics(
+                label: '$value',
+                excludeSemantics: true,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: value.toDouble()),
+                  duration: WsMotion.duration(context, WsMotion.focal),
+                  curve: WsMotion.entrance,
+                  builder: (context, counted, _) => Text(
+                    value is int
+                        ? '${counted.round()}'
+                        : counted.toStringAsFixed(1),
+                    style: context.text.displaySmall,
+                  ),
+                ),
+              ),
               const SizedBox(width: WsSpacing.xs + 2),
               Text(
                 '/ $maximum',
@@ -138,9 +170,17 @@ class WsScoreCard extends StatelessWidget {
 /// with IRCC or the province. This is a legal requirement and a trust
 /// requirement, and it belongs in the component so no screen can forget it.
 class WsDisclaimer extends StatelessWidget {
-  const WsDisclaimer({this.authority = 'the Government of Canada', super.key});
+  const WsDisclaimer({
+    this.authority = 'the Government of Canada',
+    this.message,
+    super.key,
+  });
 
   final String authority;
+
+  /// Replaces the opening sentence where the thing on screen is not a result,
+  /// such as an employer's stated support. The authority line always follows.
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +195,8 @@ class WsDisclaimer extends StatelessWidget {
         const SizedBox(width: WsSpacing.sm),
         Expanded(
           child: Text(
-            'This result is initial and based on the information you provided. '
+            '${message ?? 'This result is initial and based on the information '
+                'you provided.'} '
             'Final eligibility is determined by $authority.',
             style: context.text.bodySmall?.copyWith(color: context.ws.caption),
           ),
@@ -188,21 +229,27 @@ class WsScoreBreakdown extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final row in rows)
-            Padding(
-              padding: const EdgeInsets.only(bottom: WsSpacing.md),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(row.label, style: context.text.bodyMedium),
-                  ),
-                  Text(
-                    '${row.value}',
-                    style: context.text.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+          // Rows arrive one after another, then the total counts up to meet
+          // them — the sum is watched being made.
+          for (final (i, row) in rows.indexed)
+            WsAppear(
+              delay: (i * 0.08).clamp(0.0, 0.7).toDouble(),
+              duration: WsMotion.entranceSequence,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: WsSpacing.md),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(row.label, style: context.text.bodyMedium),
                     ),
-                  ),
-                ],
+                    Text(
+                      '${row.value}',
+                      style: context.text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           Divider(color: context.colors.outlineVariant),
@@ -212,13 +259,129 @@ class WsScoreBreakdown extends StatelessWidget {
               Expanded(
                 child: Text(totalLabel, style: context.text.titleMedium),
               ),
-              Text(
-                '$total',
-                style: context.text.titleMedium
-                    ?.copyWith(color: context.ws.redOnSurface),
+              Semantics(
+                label: '$total',
+                excludeSemantics: true,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: total.toDouble()),
+                  duration:
+                      WsMotion.duration(context, WsMotion.entranceSequence),
+                  curve: WsMotion.entrance,
+                  builder: (context, counted, _) => Text(
+                    total is int
+                        ? '${counted.round()}'
+                        : counted.toStringAsFixed(1),
+                    style: context.text.titleMedium
+                        ?.copyWith(color: context.ws.redOnSurface),
+                  ),
+                ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What sits in the score slot before the score has been asked for.
+///
+/// The same shell as [WsScoreCard] — raised card, icon tile, title, supporting
+/// line — with the number replaced by the question that produces it. Keeping
+/// the shell means the card does not jump when the score arrives; only its
+/// contents change.
+///
+/// It carries no verdict and no progress bar, because there is nothing to
+/// report yet. **An empty score slot is not an error state**, so it says what
+/// to do rather than what is missing.
+///
+/// The button is optional. A screen that shows the slot but is not where the
+/// score is produced leaves it off and explains where it is produced instead —
+/// the CRS score is generated in Immigration and nowhere else, so only that
+/// screen offers to generate it.
+class WsScorePrompt extends StatelessWidget {
+  const WsScorePrompt({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.actionLabel,
+    this.onPressed,
+    this.supporting,
+    this.note,
+    super.key,
+  }) : assert(
+          (actionLabel == null) == (onPressed == null),
+          'A label with nothing behind it is a dead button, and an action '
+          'with no label cannot be pressed.',
+        );
+
+  final IconData icon;
+  final String title;
+  final String? supporting;
+
+  /// One sentence on what pressing the button will do.
+  final String body;
+
+  /// Null on a screen that is not where the score is produced.
+  final String? actionLabel;
+  final VoidCallback? onPressed;
+
+  /// A quieter line under the button — what is still missing, say.
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final supporting = this.supporting;
+    final note = this.note;
+    final actionLabel = this.actionLabel;
+    final onPressed = this.onPressed;
+
+    return WsCard(
+      raised: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              WsIconTile(icon: icon),
+              const SizedBox(width: WsSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: context.text.titleMedium),
+                    if (supporting != null)
+                      Text(
+                        supporting,
+                        style: context.text.bodySmall
+                            ?.copyWith(color: context.ws.caption),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: WsSpacing.lg),
+          Text(
+            body,
+            style: context.text.bodyMedium
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+          if (actionLabel != null && onPressed != null) ...[
+            const SizedBox(height: WsSpacing.lg),
+            WsPrimaryButton(label: actionLabel, onPressed: onPressed),
+          ],
+          if (note != null) ...[
+            const SizedBox(height: WsSpacing.md),
+            Text(
+              note,
+              style:
+                  context.text.bodySmall?.copyWith(color: context.ws.caption),
+            ),
+          ],
         ],
       ),
     );

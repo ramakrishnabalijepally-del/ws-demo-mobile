@@ -97,9 +97,62 @@ abstract final class WsMotion {
   /// The typing-dot stagger.
   static const Duration typingCycle = Duration(milliseconds: 1200);
 
+  /// An authored entrance — one per screen, e.g. an onboarding slide
+  /// assembling its cards.
+  static const Duration focal = Duration(milliseconds: 900);
+
+  /// The launch sequence: the globe resolving, then the lockup pulling into
+  /// focus over it. Unhurried on purpose — the splash holds for
+  /// [splashDwell] either way, so there is nothing to be gained by rushing the
+  /// one moment the brand introduces itself.
+  static const Duration splashSequence = Duration(milliseconds: 3000);
+
+  /// How long the splash stays on screen before it hands over to onboarding.
+  ///
+  /// Long by the standards of a splash, and deliberately so: the globe is the
+  /// product's own story — people arriving in Canada from around the world —
+  /// and it takes about this long for every route to have flown at least once.
+  /// Cutting it short would mean nobody ever sees the journey they came for.
+  static const Duration splashDwell = Duration(seconds: 10);
+
+  /// How long the splash holds when reduced motion skips the sequence.
+  static const Duration splashHold = Duration(milliseconds: 1200);
+
+  /// One slow breath of the floating onboarding cards.
+  static const Duration ambientFloat = Duration(milliseconds: 3200);
+
   static const Curve standard = Curves.easeOutCubic;
   static const Curve emphasized = Curves.easeOutQuart;
   static const Curve exit = Curves.easeInCubic;
+
+  /// A soft, symmetric ramp for something that should *appear* rather than
+  /// arrive — the splash lockup, and anything else where the eye should not be
+  /// able to name the moment it started.
+  ///
+  /// [entrance] and [standard] both spend most of their travel in the first few
+  /// frames, which is right for an object moving into place and wrong for a
+  /// fade: it reads as a pop. This eases in and out, so opacity never jumps.
+  static const Curve tender = Curves.easeInOutSine;
+
+  /// A screen assembling several sections in order, e.g. the dashboard.
+  static const Duration entranceSequence = Duration(milliseconds: 1300);
+
+  /// Exponential ease-out for confident arrivals.
+  static const Curve entrance = Cubic(0.16, 1, 0.3, 1);
+
+  /// Maps a parent timeline [t] (0–1) onto a child window [begin]–[end], eased
+  /// with [curve].
+  ///
+  /// A pure function rather than a `CurvedAnimation`, so widgets can derive a
+  /// stagger in `build` without registering listeners they would have to
+  /// dispose.
+  static double staggered(
+    double t,
+    double begin,
+    double end, {
+    Curve curve = entrance,
+  }) =>
+      curve.transform(Interval(begin, end).transform(t));
 
   /// Honour the OS reduced-motion setting. An accessibility requirement, not a
   /// nicety — and the no-motion branch must end in the same final state.

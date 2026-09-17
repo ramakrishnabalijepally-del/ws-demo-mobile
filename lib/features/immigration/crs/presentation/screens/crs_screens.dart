@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
+import '../../../../../shared/controllers/crs_controller.dart';
 import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
+import '../../../../../shared/utils/crs_calculator.dart';
+import 'crs_calculating_screen.dart';
 import '../../../data/mock_immigration.dart';
 
-/// J2 — the tool overview, the first beat of Pattern B.
-class CrsOverviewScreen extends StatelessWidget {
+/// J2 — the CRS overview.
+///
+/// The score is not a separate quiz. It is calculated from the candidate's
+/// profile with IRCC's published points, so this screen shows what it is
+/// built from and where each piece is entered.
+class CrsOverviewScreen extends ConsumerWidget {
   const CrsOverviewScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final completion = ref.watch(profileCompletionProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('CRS Predictor')),
       body: ListView(
@@ -31,40 +41,54 @@ class CrsOverviewScreen extends StatelessWidget {
           ),
           const SizedBox(height: WsSpacing.xl),
           Text(
-            'Predict your CRS score',
+            'Your CRS score, from your profile',
             style: context.text.headlineLarge,
           ),
           const SizedBox(height: WsSpacing.md),
           Text(
             'The Comprehensive Ranking System is how Express Entry ranks '
-            'candidates. Five questions gets you an estimate you can compare '
-            'against the scores that recent draws actually invited.',
+            'candidates. WorkSettle calculates yours from your profile using '
+            'the points IRCC publishes, so it updates whenever your profile '
+            'does.',
             style: context.text.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
+          const SizedBox(height: WsSpacing.lg),
+          const WsSyncNote(
+            message: 'Linked to your profile. Answers you enter here are saved '
+                'to your profile, and changes to your profile update this '
+                'score.',
+          ),
           const SizedBox(height: WsSpacing.xxl),
+          Text('What it is built from', style: context.text.titleLarge),
+          const SizedBox(height: WsSpacing.md),
           WsCard(
+            padding: EdgeInsets.zero,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('What we will ask', style: context.text.titleMedium),
-                const SizedBox(height: WsSpacing.md),
-                for (final step in mockCrsSteps)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: WsSpacing.sm),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline_rounded,
-                          size: WsIconSize.tick,
-                          color: context.colors.onSurface,
-                        ),
-                        const SizedBox(width: WsSpacing.md),
-                        Text(step.title, style: context.text.bodyMedium),
-                      ],
+                for (final (i, section) in completion.sections.indexed) ...[
+                  if (i > 0)
+                    Divider(color: context.colors.outlineVariant, height: 1),
+                  WsListRow(
+                    leading: WsIconTile(icon: section.icon),
+                    title: section.title,
+                    subtitle: completion.done.contains(section)
+                        ? 'Complete'
+                        : 'Not complete yet',
+                    trailing: Icon(
+                      completion.done.contains(section)
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: WsIconSize.tick,
+                      color: completion.done.contains(section)
+                          ? context.colors.onSurface
+                          : context.ws.placeholder,
+                    ),
+                    onTap: () => context.push(
+                      Routes.withId(Routes.crsSection, section.name),
                     ),
                   ),
+                ],
               ],
             ),
           ),
@@ -81,8 +105,9 @@ class CrsOverviewScreen extends StatelessWidget {
             WsSpacing.lg,
           ),
           child: WsPrimaryButton(
-            label: 'Start',
-            onPressed: () => context.push(Routes.crsCalculator),
+            // The one way to a score, wherever it is asked for.
+            label: 'Get my CRS score',
+            onPressed: () => getMyCrsScore(context, ref),
           ),
         ),
       ),
@@ -90,125 +115,29 @@ class CrsOverviewScreen extends StatelessWidget {
   }
 }
 
-/// J3–J7 — the five steps, on a numbered stepper.
-class CrsCalculatorScreen extends StatefulWidget {
-  const CrsCalculatorScreen({super.key});
-
-  @override
-  State<CrsCalculatorScreen> createState() => _CrsCalculatorScreenState();
-}
-
-class _CrsCalculatorScreenState extends State<CrsCalculatorScreen> {
-  int _step = 0;
-
-  /// Pre-filled with the mock candidate's answers so the wizard is walkable
-  /// and the total matches the score the rest of the app reports.
-  late final List<int> _answers = [
-    for (final step in mockCrsSteps) step.answerIndex,
-  ];
-
-  bool get _isLast => _step == mockCrsSteps.length - 1;
-
-  void _next() {
-    if (_isLast) {
-      context.go(Routes.crsResult);
-      return;
-    }
-    setState(() => _step++);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final step = mockCrsSteps[_step];
-
-    return PopScope(
-      canPop: _step == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _step--);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('CRS Calculator'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Back',
-            onPressed: () =>
-                _step == 0 ? context.pop() : setState(() => _step--),
-          ),
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: WsSpacing.sm),
-              WsNumberedStepper(
-                steps: [for (final s in mockCrsSteps) s.title],
-                current: _step,
-                onStepTapped: (i) => setState(() => _step = i),
-              ),
-              const SizedBox(height: WsSpacing.xl),
-              Expanded(
-                child: ListView(
-                  padding: WsSpacing.gutter,
-                  children: [
-                    Text(step.question, style: context.text.headlineLarge),
-                    const SizedBox(height: WsSpacing.xxl),
-                    for (var i = 0; i < step.options.length; i++) ...[
-                      WsSelectionCard(
-                        selected: _answers[_step] == i,
-                        semanticLabel: step.options[i].label,
-                        onTap: () => setState(() => _answers[_step] = i),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                step.options[i].label,
-                                style: context.text.bodyMedium,
-                              ),
-                            ),
-                            const SizedBox(width: WsSpacing.md),
-                            Text(
-                              '${step.options[i].points} pts',
-                              style: context.text.bodySmall
-                                  ?.copyWith(color: context.ws.caption),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: WsSpacing.md),
-                    ],
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  WsSpacing.xl,
-                  WsSpacing.md,
-                  WsSpacing.xl,
-                  WsSpacing.xl,
-                ),
-                child: WsPrimaryButton(
-                  label: _isLast ? 'See my score' : 'Continue',
-                  onPressed: _next,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// J8 — the result.
+/// J8 — the result, live from the profile.
 ///
 /// Pattern B fixes the order: **the number, the verdict pill, and the sentence
-/// that puts it in context.** The breakdown is one tap away, never on the
-/// result screen itself.
-class CrsResultScreen extends StatelessWidget {
+/// that puts it in context.** When sections are missing the screen says the
+/// score is an estimate so far, and leads back to the profile.
+class CrsResultScreen extends ConsumerWidget {
   const CrsResultScreen({super.key});
 
+  static String _headline(String verdictLabel) => switch (verdictLabel) {
+        'High Potential' => 'You are above the range of recent draws',
+        'Good Range' => 'You are in a competitive range',
+        'Potential Options' => 'You are close to the range of recent draws',
+        _ => 'There are routes worth exploring',
+      };
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final crs = ref.watch(crsResultProvider);
+    final levers = ref.watch(crsLeversProvider);
+    final completion = ref.watch(profileCompletionProvider);
+    final verdict = crsVerdict(crs.total);
+    final missing = completion.sections.length - completion.done.length;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Your CRS score')),
       body: ListView(
@@ -225,16 +154,33 @@ class CrsResultScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'You are in a competitive range',
+                  missing == 0
+                      ? _headline(verdict.label)
+                      : 'An estimate so far',
                   style: context.text.titleMedium,
                 ),
                 const SizedBox(height: WsSpacing.xs),
                 Text(
-                  'Recent Express Entry draws have invited candidates scoring '
-                  '435 to 470.',
+                  missing == 0
+                      ? 'Recent Express Entry draws have invited candidates '
+                          'scoring $crsDrawLow to $crsDrawHigh.'
+                      : '$missing profile '
+                          '${missing == 1 ? 'section is' : 'sections are'} '
+                          'still missing, so your score may be higher than '
+                          'this.',
                   style: context.text.bodySmall
                       ?.copyWith(color: context.colors.onSurfaceVariant),
                 ),
+                if (completion.next case final next?)
+                  // Straight into the next missing section, inside this tab.
+                  // Saving it updates the profile and this score together.
+                  WsLink(
+                    label: 'Fill in ${next.title}',
+                    underline: false,
+                    onPressed: () => context.push(
+                      Routes.withId(Routes.crsSection, next.name),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -242,36 +188,26 @@ class CrsResultScreen extends StatelessWidget {
           WsScoreCard(
             icon: WsModule.crsPredictor.icon,
             title: 'Comprehensive Ranking System',
-            supporting: 'Based on the five answers you gave',
-            value: mockCrsScore,
-            maximum: mockCrsMaximum,
-            verdict: WsVerdict.eligible,
-            verdictLabel: 'Good Range',
-            contextLine: '$mockCrsScore — competitive for $mockRecentDraws',
+            supporting: 'Calculated from your profile',
+            value: crs.total,
+            maximum: crsMaximum,
+            verdict: verdict.verdict,
+            verdictLabel: verdict.label,
+            contextLine: '${crs.total} — $mockRecentDraws',
             brandFill: true,
             showDisclaimer: true,
           ),
-          const SizedBox(height: WsSpacing.xxl),
-          Text('What would move it', style: context.text.titleLarge),
-          const SizedBox(height: WsSpacing.md),
-          const _Lever(
-            title: 'A provincial nomination',
-            worth: '+600',
-            body: 'The single largest factor. Three provinces have streams '
-                'your profile already matches.',
-          ),
-          const _Lever(
-            title: 'CLB 10 in English',
-            worth: '+20',
-            body: 'One more test sitting, and the skill transferability '
-                'combinations move with it.',
-          ),
-          const _Lever(
-            title: 'French at CLB 7',
-            worth: '+50',
-            body: 'Several draws have been French-only. It counts even when '
-                'English is your stronger language.',
-          ),
+          if (levers.isNotEmpty) ...[
+            const SizedBox(height: WsSpacing.xxl),
+            Text('What would move it', style: context.text.titleLarge),
+            const SizedBox(height: WsSpacing.md),
+            for (final (i, lever) in levers.indexed)
+              WsAppear(
+                delay: 0.45 + i * 0.1,
+                duration: WsMotion.entranceSequence,
+                child: _Lever(lever: lever),
+              ),
+          ],
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -292,27 +228,32 @@ class CrsResultScreen extends StatelessWidget {
   }
 }
 
+/// A change that would raise the score. Tapping it opens the profile section
+/// where it would be recorded.
 class _Lever extends StatelessWidget {
-  const _Lever({required this.title, required this.worth, required this.body});
+  const _Lever({required this.lever});
 
-  final String title;
-  final String worth;
-  final String body;
+  final CrsLever lever;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: WsSpacing.md),
       child: WsCard(
+        onTap: () => context.push(
+          Routes.withId(Routes.crsSection, lever.section.name),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
-                Expanded(child: Text(title, style: context.text.titleMedium)),
+                Expanded(
+                  child: Text(lever.title, style: context.text.titleMedium),
+                ),
                 Text(
-                  worth,
+                  '+${lever.gain}',
                   style: context.text.titleMedium
                       ?.copyWith(color: context.ws.redOnSurface),
                 ),
@@ -320,7 +261,7 @@ class _Lever extends StatelessWidget {
             ),
             const SizedBox(height: WsSpacing.xs),
             Text(
-              body,
+              lever.detail,
               style:
                   context.text.bodySmall?.copyWith(color: context.ws.caption),
             ),
@@ -331,12 +272,18 @@ class _Lever extends StatelessWidget {
   }
 }
 
-/// J9 — the breakdown table.
-class CrsBreakdownScreen extends StatelessWidget {
+/// J9 — the breakdown, one table per group of the IRCC grid.
+class CrsBreakdownScreen extends ConsumerWidget {
   const CrsBreakdownScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final crs = ref.watch(crsResultProvider);
+    final groups = [
+      for (final group in CrsGroup.values)
+        if (crs.lines.any((line) => line.group == group)) group,
+    ];
+
     return Scaffold(
       appBar: AppBar(title: const Text('Score breakdown')),
       body: ListView(
@@ -347,24 +294,48 @@ class CrsBreakdownScreen extends StatelessWidget {
           WsSpacing.huge,
         ),
         children: [
-          Text(
-            'How $mockCrsScore adds up',
-            style: context.text.titleLarge,
-          ),
+          Text('How ${crs.total} adds up', style: context.text.titleLarge),
           const SizedBox(height: WsSpacing.md),
           Text(
-            'Core factors first, then the points the system awards for how '
-            'they combine.',
+            "Every line comes from IRCC's published points grid and the "
+            'answers in your profile.',
             style: context.text.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
           const SizedBox(height: WsSpacing.xl),
-          const WsScoreBreakdown(
-            rows: mockCrsBreakdown,
-            totalLabel: 'Total CRS score',
-            total: mockCrsScore,
+          for (final group in groups) ...[
+            Text(group.label, style: context.text.titleMedium),
+            const SizedBox(height: WsSpacing.sm),
+            WsScoreBreakdown(
+              rows: [
+                for (final line in crs.lines)
+                  if (line.group == group)
+                    (label: line.label, value: line.points),
+              ],
+              totalLabel: 'Subtotal',
+              total: crs.subtotal(group),
+            ),
+            const SizedBox(height: WsSpacing.xl),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: Text('Total CRS score', style: context.text.titleLarge),
+              ),
+              Text(
+                '${crs.total}',
+                style: context.text.titleLarge
+                    ?.copyWith(color: context.ws.redOnSurface),
+              ),
+            ],
           ),
-          const SizedBox(height: WsSpacing.xl),
+          const SizedBox(height: WsSpacing.lg),
+          Text(
+            'Job offers no longer add CRS points — IRCC removed them on 25 '
+            'March 2025.',
+            style: context.text.bodySmall?.copyWith(color: context.ws.caption),
+          ),
+          const SizedBox(height: WsSpacing.md),
           const WsDisclaimer(),
         ],
       ),

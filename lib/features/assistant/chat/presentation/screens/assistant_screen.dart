@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
+import '../../../../../shared/controllers/crs_controller.dart';
 import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
+import '../../../../../shared/utils/crs_calculator.dart';
 import '../../../../immigration/immigration.dart';
 import '../../../data/mock_assistant.dart';
 
@@ -16,11 +19,11 @@ import '../../../data/mock_assistant.dart';
 /// The timeline is the piece that matters. It replaces a spinner with the
 /// actual work being done, one line at a time, which is what makes the wait
 /// read as diligence rather than lag.
-class AssistantScreen extends StatefulWidget {
+class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
 
   @override
-  State<AssistantScreen> createState() => _AssistantScreenState();
+  ConsumerState<AssistantScreen> createState() => _AssistantScreenState();
 }
 
 /// One entry in the visible thread.
@@ -44,7 +47,7 @@ class _ThinkingTurn extends _Turn {
   final int completed;
 }
 
-class _AssistantScreenState extends State<AssistantScreen> {
+class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final TextEditingController _composer = TextEditingController();
   final ScrollController _scroll = ScrollController();
   final List<_Turn> _turns = [];
@@ -60,12 +63,21 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   AssistantExchange _exchangeFor(String question) {
     final lower = question.toLowerCase();
-    return mockExchanges.firstWhere(
+    final exchange = mockExchanges.firstWhere(
       (e) => e.question.toLowerCase() == lower,
       // Anything unscripted gets the CRS answer, which is the one every
       // newcomer asks first anyway.
       orElse: () => mockExchanges.first,
     );
+
+    // The score is not shown until it has been asked for, and it is asked for
+    // in Immigration. Since every unscripted question lands on the CRS answer,
+    // without this the assistant would hand over the number to anyone who
+    // typed anything at all.
+    if (exchange.scoreCard && !ref.read(crsRevealedProvider)) {
+      return mockCrsNotAskedExchange;
+    }
+    return exchange;
   }
 
   Future<void> _ask(String question) async {
@@ -206,8 +218,16 @@ class _EmptyState extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: WsSpacing.xxl),
-        for (final question in mockSuggestedQuestions)
-          WsSuggestionRow(question: question, onTap: () => onAsk(question)),
+        // The suggestions cascade in under the heading.
+        for (final (i, question) in mockSuggestedQuestions.indexed)
+          WsAppear(
+            delay: i * 0.07,
+            duration: WsMotion.entranceSequence,
+            child: WsSuggestionRow(
+              question: question,
+              onTap: () => onAsk(question),
+            ),
+          ),
       ],
     );
   }
@@ -242,14 +262,24 @@ class _TurnView extends StatelessWidget {
   }
 }
 
-class _Answer extends StatelessWidget {
+class _Answer extends ConsumerWidget {
   const _Answer({required this.exchange, required this.onAsk});
 
   final AssistantExchange exchange;
   final ValueChanged<String> onAsk;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The same score the profile calculates — the assistant never quotes a
+    // different number from the rest of the app, which is why the opening line
+    // is built from this total rather than written into the fixture.
+    final crs = ref.watch(crsResultProvider);
+    final verdict = crsVerdict(crs.total);
+    final revealed = ref.watch(crsRevealedProvider);
+    final showScore = exchange.scoreCard && revealed;
+    final lines =
+        answerLines(exchange, crs.total, ref.watch(liningUpStreamsProvider));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -263,24 +293,24 @@ class _Answer extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (var i = 0; i < exchange.answer.length; i++) ...[
-                Text(exchange.answer[i]),
-                if (i != exchange.answer.length - 1)
-                  const SizedBox(height: WsSpacing.md),
+              for (var i = 0; i < lines.length; i++) ...[
+                Text(lines[i]),
+                if (i != lines.length - 1) const SizedBox(height: WsSpacing.md),
               ],
             ],
           ),
         ),
-        // A score inside an answer renders as the real card, not as text.
-        if (exchange.scoreCard) ...[
+        // A score inside an answer renders as the real card, not as text —
+        // once the candidate has asked for it.
+        if (showScore) ...[
           WsScoreCard(
             icon: WsModule.crsPredictor.icon,
             title: 'Your CRS score',
             supporting: 'Comprehensive Ranking System',
-            value: mockCrsScore,
-            maximum: mockCrsMaximum,
-            verdict: WsVerdict.eligible,
-            verdictLabel: 'Good Range',
+            value: crs.total,
+            maximum: crsMaximum,
+            verdict: verdict.verdict,
+            verdictLabel: verdict.label,
             contextLine: mockRecentDraws,
             brandFill: true,
             showDisclaimer: true,
@@ -294,8 +324,16 @@ class _Answer extends StatelessWidget {
             style: context.text.labelLarge?.copyWith(color: context.ws.caption),
           ),
         ),
-        for (final followUp in exchange.followUps)
-          WsSuggestionRow(question: followUp, onTap: () => onAsk(followUp)),
+        // Follow-ups arrive after the answer and its score card have landed.
+        for (final (i, followUp) in exchange.followUps.indexed)
+          WsAppear(
+            delay: 0.35 + i * 0.1,
+            duration: WsMotion.entranceSequence,
+            child: WsSuggestionRow(
+              question: followUp,
+              onTap: () => onAsk(followUp),
+            ),
+          ),
         const SizedBox(height: WsSpacing.sm),
         WsSecondaryButton(
           label: 'Save this to my profile',

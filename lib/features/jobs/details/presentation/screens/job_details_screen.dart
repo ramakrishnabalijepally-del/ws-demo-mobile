@@ -7,6 +7,7 @@ import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
 import '../../../controllers/jobs_controller.dart';
 import '../../../models/job.dart';
+import '../widgets/job_detail_sections.dart';
 
 /// E7–E8 — the job detail, and the share sheet.
 class JobDetailsScreen extends ConsumerWidget {
@@ -76,6 +77,10 @@ class JobDetailsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (job.isNew) ...[
+                        const WsBadge.fresh(),
+                        const SizedBox(height: WsSpacing.sm),
+                      ],
                       Text(job.title, style: context.text.titleLarge),
                       const SizedBox(height: WsSpacing.xs),
                       Text(
@@ -85,7 +90,7 @@ class JobDetailsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: WsSpacing.sm),
                       Text(
-                        'Posted ${job.postedAgo}',
+                        job.typeLabel,
                         style: context.text.bodySmall
                             ?.copyWith(color: context.ws.caption),
                       ),
@@ -118,35 +123,35 @@ class JobDetailsScreen extends ConsumerWidget {
           ],
           const SizedBox(height: WsSpacing.xl),
           _Facts(job: job),
-          const SizedBox(height: WsSpacing.xxl),
-          Text('About the role', style: context.text.titleLarge),
-          const SizedBox(height: WsSpacing.md),
-          Text(
-            job.summary,
-            style: context.text.bodyMedium
-                ?.copyWith(color: context.colors.onSurfaceVariant),
+          JobDetailSection(
+            title: 'Job type',
+            child: JobTypeChips(types: job.types),
           ),
-          const SizedBox(height: WsSpacing.xxl),
-          Text('Requirements', style: context.text.titleLarge),
-          const SizedBox(height: WsSpacing.md),
-          for (final requirement in job.requirements)
-            Padding(
-              padding: const EdgeInsets.only(bottom: WsSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline_rounded,
-                    size: WsIconSize.tick,
-                    color: context.colors.onSurface,
-                  ),
-                  const SizedBox(width: WsSpacing.md),
-                  Expanded(
-                    child: Text(requirement, style: context.text.bodyMedium),
-                  ),
-                ],
-              ),
-            ),
+          JobDetailSection(
+            title: 'Job description',
+            child: JobDescription(job: job),
+          ),
+          JobDetailSection(
+            title: 'Tasks and duties',
+            child: JobDutiesList(duties: job.duties),
+          ),
+          JobDetailSection(
+            title: 'Requirements',
+            child: JobRequirementsCard(job: job),
+          ),
+          JobDetailSection(
+            title: 'Skills',
+            child: JobSkillChips(skills: job.skills),
+          ),
+          JobDetailSection(
+            title: 'Benefits',
+            child: JobBenefitsCard(benefits: job.benefits),
+          ),
+          JobDetailSection(
+            title: 'Immigration support',
+            supporting: 'What this employer has said it will do',
+            child: JobImmigrationSupportCard(support: job.immigrationSupport),
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -226,9 +231,9 @@ class _Facts extends StatelessWidget {
   Widget build(BuildContext context) {
     final facts = <(String, String)>[
       ('Salary', '${job.salaryRange} per year'),
-      ('Type', job.employment.label),
       ('Location', job.location),
       ('NOC code', job.nocCode),
+      ('Posted', job.postedAgo),
     ];
 
     return WsCard(

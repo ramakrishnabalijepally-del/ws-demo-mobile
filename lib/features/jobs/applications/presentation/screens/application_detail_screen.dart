@@ -144,7 +144,7 @@ class ApplicationDetailScreen extends ConsumerWidget {
             child: Column(
               children: [
                 _Fact(label: 'Salary', value: '${job.salaryRange} per year'),
-                _Fact(label: 'Type', value: job.employment.label),
+                _Fact(label: 'Type', value: job.typeLabel),
                 _Fact(label: 'Location', value: job.location, last: true),
               ],
             ),

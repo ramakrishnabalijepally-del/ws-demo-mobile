@@ -134,7 +134,11 @@ class WsNumberedStepper extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
+                    // The circle fills as the step becomes current, and the
+                    // numeral pops to a check once it is done.
+                    AnimatedContainer(
+                      duration: WsMotion.duration(context, WsMotion.medium),
+                      curve: WsMotion.standard,
                       width: 24,
                       height: 24,
                       alignment: Alignment.center,
@@ -150,20 +154,28 @@ class WsNumberedStepper extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: done
-                          ? Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: context.colors.onPrimary,
-                            )
-                          : Text(
-                              '${i + 1}',
-                              style: WsTypography.micro(
-                                active
-                                    ? context.colors.onPrimary
-                                    : context.ws.caption,
-                              ).copyWith(fontWeight: FontWeight.w700),
-                            ),
+                      child: AnimatedSwitcher(
+                        duration: WsMotion.duration(context, WsMotion.medium),
+                        switchInCurve: Curves.easeOutBack,
+                        transitionBuilder: (child, animation) =>
+                            ScaleTransition(scale: animation, child: child),
+                        child: done
+                            ? Icon(
+                                Icons.check_rounded,
+                                key: const ValueKey('done'),
+                                size: 14,
+                                color: context.colors.onPrimary,
+                              )
+                            : Text(
+                                '${i + 1}',
+                                key: ValueKey('step$active'),
+                                style: WsTypography.micro(
+                                  active
+                                      ? context.colors.onPrimary
+                                      : context.ws.caption,
+                                ).copyWith(fontWeight: FontWeight.w700),
+                              ),
+                      ),
                     ),
                     const SizedBox(width: WsSpacing.sm),
                     Text(
@@ -213,12 +225,19 @@ class WsMeter extends StatelessWidget {
       label: semanticLabel ?? '$value out of $maximum',
       child: ClipRRect(
         borderRadius: WsRadii.pillR,
-        child: LinearProgressIndicator(
-          value: fraction.toDouble(),
-          minHeight: 8,
-          backgroundColor: context.colors.outlineVariant,
-          valueColor: AlwaysStoppedAnimation<Color>(
-            useBrandFill ? context.colors.primary : context.colors.onSurface,
+        // Fills from empty on arrival and glides between values after that
+        // (a checklist item ticked), so a change is seen rather than inferred.
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: fraction.toDouble()),
+          duration: WsMotion.duration(context, WsMotion.focal),
+          curve: WsMotion.entrance,
+          builder: (context, animated, _) => LinearProgressIndicator(
+            value: animated,
+            minHeight: 8,
+            backgroundColor: context.colors.outlineVariant,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              useBrandFill ? context.colors.primary : context.colors.onSurface,
+            ),
           ),
         ),
       ),
@@ -328,55 +347,145 @@ class WsTimelineStep {
 ///
 /// It names the actual work being done, one line at a time, which is what makes
 /// a four-second wait feel like diligence rather than lag. Each row resolves in
-/// order; the pending row is a hollow ring.
-class WsProcessingTimeline extends StatelessWidget {
+/// order: the hollow ring pops to a check and the label darkens, and a dot
+/// breathes inside the row currently being worked on.
+class WsProcessingTimeline extends StatefulWidget {
   const WsProcessingTimeline({required this.steps, super.key});
 
   final List<WsTimelineStep> steps;
 
   @override
+  State<WsProcessingTimeline> createState() => _WsProcessingTimelineState();
+}
+
+class _WsProcessingTimelineState extends State<WsProcessingTimeline>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: WsMotion.typingCycle,
+  );
+
+  /// Runs only while there is work left, and never under reduced motion.
+  void _sync() {
+    final working = widget.steps.any((s) => !s.done);
+    if (WsMotion.reduced(context) || !working) {
+      _pulse.stop();
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(WsProcessingTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final active = widget.steps.indexWhere((s) => !s.done);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final step in steps)
+        for (final (i, step) in widget.steps.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: WsSpacing.md),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (step.done)
-                  Icon(
-                    Icons.check_circle_rounded,
-                    size: 18,
-                    color: context.colors.onSurface,
-                  )
-                else
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border:
-                          Border.all(color: context.colors.outline, width: 2),
+                SizedBox.square(
+                  dimension: 18,
+                  child: AnimatedSwitcher(
+                    duration: WsMotion.duration(context, WsMotion.medium),
+                    switchInCurve: Curves.easeOutBack,
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: animation,
+                      child: FadeTransition(opacity: animation, child: child),
                     ),
+                    child: step.done
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            key: const ValueKey('done'),
+                            size: 18,
+                            color: context.colors.onSurface,
+                          )
+                        : _PendingMark(
+                            key: const ValueKey('pending'),
+                            pulse: i == active ? _pulse : null,
+                          ),
                   ),
+                ),
                 const SizedBox(width: WsSpacing.md),
                 Expanded(
-                  child: Text(
-                    step.label,
-                    style: context.text.bodyMedium?.copyWith(
+                  child: AnimatedDefaultTextStyle(
+                    duration: WsMotion.duration(context, WsMotion.medium),
+                    style: context.text.bodyMedium!.copyWith(
                       color: step.done
                           ? context.colors.onSurface
                           : context.ws.caption,
                     ),
+                    child: Text(step.label),
                   ),
                 ),
               ],
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A hollow ring. On the row being worked on, a dot breathes inside it.
+class _PendingMark extends StatelessWidget {
+  const _PendingMark({this.pulse, super.key});
+
+  final Animation<double>? pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    final pulse = this.pulse;
+    return Container(
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color:
+              pulse == null ? context.colors.outline : context.colors.onSurface,
+          width: 2,
+        ),
+      ),
+      child: pulse == null
+          ? null
+          : AnimatedBuilder(
+              animation: pulse,
+              builder: (context, _) {
+                final dot = 4 + 4 * pulse.value;
+                return Container(
+                  width: dot,
+                  height: dot,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: context.colors.onSurface,
+                  ),
+                );
+              },
+            ),
     );
   }
 }

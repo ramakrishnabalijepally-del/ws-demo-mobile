@@ -1,27 +1,6 @@
-/// One step of the CRS calculator.
-class CrsStep {
-  const CrsStep({
-    required this.title,
-    required this.question,
-    required this.options,
-    required this.answerIndex,
-  });
-
-  final String title;
-  final String question;
-  final List<CrsOption> options;
-
-  /// What the mock candidate answered — so the wizard is pre-filled and the
-  /// result adds up to the score the rest of the app shows.
-  final int answerIndex;
-}
-
-class CrsOption {
-  const CrsOption(this.label, this.points);
-
-  final String label;
-  final int points;
-}
+import '../../../shared/controllers/crs_controller.dart';
+import '../../../shared/models/crs_profile.dart';
+import '../../../shared/utils/pnp_matcher.dart';
 
 /// A provincial nominee stream.
 class PnpStream {
@@ -29,15 +8,22 @@ class PnpStream {
     required this.name,
     required this.summary,
     required this.requirements,
-    required this.matched,
+    required this.criteria,
   });
 
   final String name;
   final String summary;
+
+  /// The published requirements, as a reader reads them.
   final List<String> requirements;
 
-  /// Whether the mock candidate's profile lines up with it.
-  final bool matched;
+  /// The same requirements, in the form [assessStream] can check against a
+  /// profile. **The two lists say the same thing** — if you edit one, edit the
+  /// other.
+  ///
+  /// This replaced a stored `matched` flag. A stream's verdict is a fact about
+  /// a candidate, not about the stream, so it cannot live here.
+  final StreamCriteria criteria;
 }
 
 class Province {
@@ -69,99 +55,22 @@ class FederalProgram {
   final String note;
 }
 
-/// J3–J7 — the five calculator steps.
-///
-/// The point values are the ones the Comprehensive Ranking System actually
-/// publishes for a single applicant, so the arithmetic on the result screen is
-/// real rather than decorative.
-const List<CrsStep> mockCrsSteps = [
-  CrsStep(
-    title: 'Age',
-    question: 'How old are you?',
-    answerIndex: 1,
-    options: [
-      CrsOption('18 to 19', 99),
-      CrsOption('20 to 29', 110),
-      CrsOption('30 to 34', 95),
-      CrsOption('35 to 39', 70),
-      CrsOption('40 or older', 25),
-    ],
-  ),
-  CrsStep(
-    title: 'Education',
-    question: 'What is your highest completed qualification?',
-    answerIndex: 2,
-    options: [
-      CrsOption('Secondary school', 30),
-      CrsOption('One-year post-secondary credential', 90),
-      CrsOption("Bachelor's degree or three-year credential", 120),
-      CrsOption('Two or more credentials, one three years or longer', 128),
-      CrsOption("Master's degree", 135),
-      CrsOption('Doctoral degree', 150),
-    ],
-  ),
-  CrsStep(
-    title: 'Language',
-    question: 'What is your Canadian Language Benchmark in English?',
-    answerIndex: 2,
-    options: [
-      CrsOption('CLB 7 in all four abilities', 68),
-      CrsOption('CLB 8 in all four abilities', 92),
-      CrsOption('CLB 9 in all four abilities', 116),
-      CrsOption('CLB 10 or higher in all four abilities', 136),
-    ],
-  ),
-  CrsStep(
-    title: 'Work Experience',
-    question: 'How many years of skilled work experience do you have?',
-    answerIndex: 2,
-    options: [
-      CrsOption('Less than one year', 0),
-      CrsOption('One year', 40),
-      CrsOption('Two to three years', 53),
-      CrsOption('Four to five years', 63),
-      CrsOption('Six years or more', 72),
-    ],
-  ),
-  CrsStep(
-    title: 'Adaptability',
-    question: 'Do any of these apply to you?',
-    answerIndex: 1,
-    options: [
-      CrsOption('None of these', 0),
-      CrsOption('A sibling who is a citizen or permanent resident', 15),
-      CrsOption('Canadian post-secondary study', 30),
-      CrsOption('A provincial nomination', 600),
-    ],
-  ),
-];
-
-/// J9 — the breakdown that adds up to 468.
-///
-/// The rows total the core factors; skill transferability is the remainder the
-/// system awards for combinations, which is why it appears as its own line
-/// rather than being folded into the others.
-const List<({String label, num value})> mockCrsBreakdown = [
-  (label: 'Age', value: 110),
-  (label: 'Education', value: 120),
-  (label: 'Language — first official language', value: 116),
-  (label: 'Language — second official language', value: 0),
-  (label: 'Canadian work experience', value: 0),
-  (label: 'Foreign work experience', value: 53),
-  (label: 'Skill transferability', value: 54),
-  (label: 'Sibling in Canada', value: 15),
-  (label: 'Provincial nomination', value: 0),
-];
-
-const int mockCrsScore = 468;
-const int mockCrsMaximum = 1200;
-const String mockRecentDraws = 'Recent draws: 435–470';
+// The CRS score is no longer a fixture: it is calculated from the candidate's
+// profile (`lib/shared/utils/crs_calculator.dart`). Only the draw range stays
+// mocked.
+// TODO(backend): recent draw cut-offs should come from a live feed.
+/// Built from [crsDrawLow]/[crsDrawHigh] rather than written out, so the
+/// context line under a score card can never name a different range from the
+/// verdict beside it.
+const String mockRecentDraws = 'Recent draws: $crsDrawLow–$crsDrawHigh';
 
 /// J10–J13 — provinces and their streams.
 ///
-/// Six provinces with real program names. The matched flag reflects the mock
-/// candidate: a UI/UX designer in Toronto with CLB 9 English and no Canadian
-/// work experience.
+/// Seven provinces with real program names and their published requirements.
+///
+/// **No stream says whether it matches.** That is a fact about a candidate,
+/// and it is worked out by `assessStream` against the live profile — see
+/// `controllers/stream_matches.dart`.
 const List<Province> mockProvinces = [
   Province(
     name: 'Ontario',
@@ -171,7 +80,11 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Human Capital Priorities',
         summary: 'Draws from the Express Entry pool for in-demand skills.',
-        matched: true,
+        criteria: StreamCriteria(
+          minClb: 7,
+          minEducation: EducationLevel.bachelors,
+          minCrs: 400,
+        ),
         requirements: [
           'An active Express Entry profile',
           'A CRS score in the range of recent Ontario draws',
@@ -182,7 +95,10 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Employer Job Offer — Foreign Worker',
         summary: 'For applicants holding a job offer from an Ontario employer.',
-        matched: false,
+        criteria: StreamCriteria(
+          minWorkYears: 2,
+          unknowns: [StreamUnknown.jobOffer],
+        ),
         requirements: [
           'A permanent, full-time job offer in a skilled occupation',
           'The employer meets revenue and staffing thresholds',
@@ -192,7 +108,14 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Masters Graduate',
         summary: 'For recent graduates of an Ontario masters program.',
-        matched: false,
+        criteria: StreamCriteria(
+          minClb: 7,
+          minEducation: EducationLevel.masters,
+          unknowns: [
+            StreamUnknown.studiedInProvince,
+            StreamUnknown.livingInProvince,
+          ],
+        ),
         requirements: [
           'A masters degree from an eligible Ontario institution',
           'CLB 7 or above',
@@ -209,7 +132,11 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Skills Immigration — Skilled Worker',
         summary: 'For skilled workers with a BC job offer.',
-        matched: false,
+        criteria: StreamCriteria(
+          minClb: 4,
+          minWorkYears: 2,
+          unknowns: [StreamUnknown.jobOffer],
+        ),
         requirements: [
           'An indeterminate full-time job offer from a BC employer',
           'Two years of directly related experience',
@@ -219,7 +146,10 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Tech',
         summary: 'Priority processing for 29 technology occupations.',
-        matched: true,
+        criteria: StreamCriteria(
+          minClb: 4,
+          unknowns: [StreamUnknown.jobOffer, StreamUnknown.occupationList],
+        ),
         requirements: [
           'A job offer of at least one year in an eligible tech occupation',
           'At least 120 days remaining on the offer',
@@ -229,7 +159,13 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'International Graduate',
         summary: 'For graduates of a Canadian institution within three years.',
-        matched: false,
+        criteria: StreamCriteria(
+          needsCanadianEducation: true,
+          unknowns: [
+            StreamUnknown.studiedInProvince,
+            StreamUnknown.jobOffer,
+          ],
+        ),
         requirements: [
           'A degree or diploma from an eligible Canadian institution',
           'Graduated within the last three years',
@@ -246,7 +182,10 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Alberta Express Entry',
         summary: 'Nominates candidates already in the Express Entry pool.',
-        matched: true,
+        criteria: StreamCriteria(
+          minCrs: 300,
+          unknowns: [StreamUnknown.occupationList],
+        ),
         requirements: [
           'An active Express Entry profile',
           'A CRS score of at least 300',
@@ -256,7 +195,13 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Alberta Opportunity',
         summary: 'For those already working in Alberta on a valid permit.',
-        matched: false,
+        criteria: StreamCriteria(
+          minClb: 4,
+          unknowns: [
+            StreamUnknown.livingInProvince,
+            StreamUnknown.jobOffer,
+          ],
+        ),
         requirements: [
           'Currently working in Alberta on an eligible work permit',
           'A full-time job offer from an Alberta employer',
@@ -273,7 +218,10 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Labour Market Priorities',
         summary: 'Targeted draws from the Express Entry pool.',
-        matched: true,
+        criteria: StreamCriteria(
+          minClb: 7,
+          unknowns: [StreamUnknown.targetedDraw],
+        ),
         requirements: [
           'An active Express Entry profile',
           'Meets the criteria of a current targeted draw',
@@ -283,7 +231,11 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Skilled Worker',
         summary: 'For applicants with a Nova Scotia employer offer.',
-        matched: false,
+        criteria: StreamCriteria(
+          minClb: 5,
+          minWorkYears: 1,
+          unknowns: [StreamUnknown.jobOffer],
+        ),
         requirements: [
           'A full-time permanent job offer from a Nova Scotia employer',
           'One year of related work experience',
@@ -301,7 +253,10 @@ const List<Province> mockProvinces = [
         name: 'Regular Skilled Worker Program',
         summary: 'Quebec selects its own skilled workers, outside Express '
             'Entry.',
-        matched: false,
+        criteria: StreamCriteria(
+          needsFrench: 7,
+          unknowns: [StreamUnknown.targetedDraw],
+        ),
         requirements: [
           'A points score meeting the current cut-off',
           'Intermediate French is heavily weighted',
@@ -311,7 +266,13 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Quebec Experience Program',
         summary: 'For those who have studied or worked in Quebec.',
-        matched: false,
+        criteria: StreamCriteria(
+          needsFrench: 7,
+          unknowns: [
+            StreamUnknown.livingInProvince,
+            StreamUnknown.studiedInProvince,
+          ],
+        ),
         requirements: [
           'Twelve months of skilled work in Quebec, or a Quebec diploma',
           'Level 7 oral French',
@@ -327,7 +288,11 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'International Skilled Worker — Express Entry',
         summary: 'Draws from the Express Entry pool against an in-demand list.',
-        matched: true,
+        criteria: StreamCriteria(
+          minClb: 7,
+          provincialGridCode: 'SK',
+          unknowns: [StreamUnknown.occupationList],
+        ),
         requirements: [
           'An active Express Entry profile',
           'An occupation on the in-demand list',
@@ -338,11 +303,55 @@ const List<Province> mockProvinces = [
       PnpStream(
         name: 'Occupations In-Demand',
         summary: 'For skilled workers without a job offer.',
-        matched: true,
+        criteria: StreamCriteria(
+          minClb: 4,
+          minWorkYears: 1,
+          provincialGridCode: 'SK',
+          unknowns: [StreamUnknown.occupationList],
+        ),
         requirements: [
           'An occupation on the in-demand list',
           'One year of related experience in the last ten years',
           'CLB 4 or above',
+        ],
+      ),
+    ],
+  ),
+  Province(
+    name: 'Manitoba',
+    abbreviation: 'MB',
+    programName: 'Manitoba Provincial Nominee Program',
+    streams: [
+      PnpStream(
+        name: 'Skilled Worker Overseas',
+        summary: 'For skilled workers abroad with a strong connection to '
+            'Manitoba, invited through Expression of Interest draws.',
+        criteria: StreamCriteria(
+          minClb: 5,
+          minWorkYears: 1,
+          unknowns: [StreamUnknown.connectionToProvince],
+        ),
+        requirements: [
+          'A close relative, past work or study in Manitoba, or an invitation '
+              'through a strategic initiative',
+          'CLB 5 or above in English or French',
+          'Six months of full-time experience in your occupation',
+        ],
+      ),
+      PnpStream(
+        name: 'Skilled Worker in Manitoba',
+        summary: 'For people already working in Manitoba on a work permit.',
+        criteria: StreamCriteria(
+          minClb: 4,
+          unknowns: [
+            StreamUnknown.livingInProvince,
+            StreamUnknown.jobOffer,
+          ],
+        ),
+        requirements: [
+          'Six months of full-time work for a Manitoba employer',
+          'A permanent, full-time job offer from that employer',
+          'CLB 4 or above, or higher for some occupations',
         ],
       ),
     ],

@@ -16,7 +16,36 @@ enum WsHero {
   profile('assets/images/hero_profile.jpg'),
 
   /// A man holding a signed contract, thumbs up. The outcome.
-  success('assets/images/hero_success.jpg');
+  success('assets/images/hero_success.jpg'),
+
+  // TODO(assets): the four below are Unsplash demo stand-ins, not client
+  // photography — replace before release.
+
+  /// A traveller with a suitcase at an airport window, a plane taking off.
+  /// Immigration — it echoes the onboarding flight-path animation.
+  immigration('assets/images/hero_immigration.jpg'),
+
+  /// A developer coding at two screens in an open office. The job portal —
+  /// it pairs with the onboarding "Software Developer" match card.
+  jobPortal('assets/images/hero_job_portal.jpg'),
+
+  /// Someone at a desk with laptop and notebook, working on their phone. The
+  /// candidate's own profile — it pairs with the onboarding checklist card.
+  userProfile('assets/images/hero_user_profile.jpg'),
+
+  /// A teacher and students with raised hands. Language support — a wide shot,
+  /// so it serves the home banner directly.
+  language('assets/images/hero_language.jpg'),
+
+  // Wide crops for the home banners (about 2.8:1, glyph over the left third).
+  // Deliberately different photographs from onboarding, and chosen so the
+  // section reads at a glance with the subject centre-right.
+
+  /// The Canadian flag before the Peace Tower on Parliament Hill. Immigration.
+  tileImmigration('assets/images/tile_immigration.jpg'),
+
+  /// A handshake across an interview desk, clipboard and laptop. Jobs.
+  tileJobs('assets/images/tile_jobs.jpg');
 
   const WsHero(this.path);
 

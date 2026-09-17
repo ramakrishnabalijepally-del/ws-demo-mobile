@@ -32,6 +32,10 @@ class _VoiceModeScreenState extends State<VoiceModeScreen>
   bool _listening = false;
   bool _answered = false;
 
+  /// The 72 px record button, and the box its listening halo spreads into.
+  static const double _recordSize = 72;
+  static const double _haloExtent = _recordSize * 1.7;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -107,20 +111,36 @@ class _VoiceModeScreenState extends State<VoiceModeScreen>
             child: Column(
               children: [
                 const Spacer(),
-                if (_answered)
-                  Text(
-                    exchange.answer.first,
-                    style: context.text.bodyMedium
-                        ?.copyWith(color: ws.voiceForeground),
-                    textAlign: TextAlign.center,
-                  )
-                else
-                  Text(
-                    _listening ? 'Listening…' : 'Tap to speak',
-                    style: context.text.headlineLarge
-                        ?.copyWith(color: ws.voiceForeground),
-                    textAlign: TextAlign.center,
+                // The prompt, "Listening…" and the answer cross-fade rather
+                // than cut, so the state change is felt.
+                AnimatedSwitcher(
+                  duration: WsMotion.duration(context, WsMotion.slow),
+                  switchInCurve: WsMotion.entrance,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: animation.drive(
+                        Tween(begin: const Offset(0, 0.15), end: Offset.zero),
+                      ),
+                      child: child,
+                    ),
                   ),
+                  child: _answered
+                      ? Text(
+                          exchange.answer.first,
+                          key: const ValueKey('answer'),
+                          style: context.text.bodyMedium
+                              ?.copyWith(color: ws.voiceForeground),
+                          textAlign: TextAlign.center,
+                        )
+                      : Text(
+                          _listening ? 'Listening…' : 'Tap to speak',
+                          key: ValueKey(_listening),
+                          style: context.text.headlineLarge
+                              ?.copyWith(color: ws.voiceForeground),
+                          textAlign: TextAlign.center,
+                        ),
+                ),
                 const SizedBox(height: WsSpacing.huge),
                 SizedBox(
                   height: 96,
@@ -143,21 +163,46 @@ class _VoiceModeScreenState extends State<VoiceModeScreen>
                 Semantics(
                   button: true,
                   label: _listening ? 'Stop listening' : 'Start speaking',
-                  child: InkWell(
-                    onTap: _toggle,
-                    customBorder: const CircleBorder(),
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: context.colors.primary,
-                      ),
-                      child: Icon(
-                        _listening ? Icons.stop_rounded : Icons.mic_rounded,
-                        size: 32,
-                        color: context.colors.onPrimary,
-                      ),
+                  child: SizedBox.square(
+                    dimension: _haloExtent,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (_listening && !WsMotion.reduced(context))
+                          _ListeningHalo(
+                            pulse: _waveform,
+                            color: context.colors.primary,
+                          ),
+                        InkWell(
+                          onTap: _toggle,
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            width: _recordSize,
+                            height: _recordSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: context.colors.primary,
+                            ),
+                            child: AnimatedSwitcher(
+                              duration:
+                                  WsMotion.duration(context, WsMotion.medium),
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              ),
+                              child: Icon(
+                                _listening
+                                    ? Icons.stop_rounded
+                                    : Icons.mic_rounded,
+                                key: ValueKey(_listening),
+                                size: 32,
+                                color: context.colors.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -173,6 +218,48 @@ class _VoiceModeScreenState extends State<VoiceModeScreen>
                 const SizedBox(height: WsSpacing.xxl),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Two soft red rings spreading out from the record button while it listens —
+/// the button visibly "hearing" rather than sitting still.
+class _ListeningHalo extends StatelessWidget {
+  const _ListeningHalo({required this.pulse, required this.color});
+
+  final Animation<double> pulse;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: pulse,
+          builder: (context, _) => Stack(
+            alignment: Alignment.center,
+            children: [
+              for (final offset in const [0.0, 0.5])
+                Builder(
+                  builder: (context) {
+                    final p = (pulse.value + offset) % 1;
+                    return Transform.scale(
+                      scale: 1 + 0.7 * p,
+                      child: Container(
+                        width: _VoiceModeScreenState._recordSize,
+                        height: _VoiceModeScreenState._recordSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.3 * (1 - p)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ),
       ),

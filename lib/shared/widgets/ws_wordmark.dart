@@ -37,12 +37,41 @@ class WsWordmark extends StatelessWidget {
 
   static const double _taglineThreshold = 96;
 
+  /// The supplied `worksettle.svg`, rendered at 4× and cropped to the lockup
+  /// so it stays sharp at every width the app sets it. There is no SVG
+  /// renderer in the stack, and adding one needs approval
+  /// (`.agents/rules/01-stack.md`).
+  static const String _asset = 'assets/images/worksettle_logo.png';
+
+  /// The artwork's own proportions, 1215 × 401.
+  ///
+  /// The height is set from this rather than left to the decoded image,
+  /// because an `Image` given only a width occupies **no height at all** until
+  /// the file has decoded — and then jumps to its full size. Anything laid out
+  /// around the lockup moves when that happens, which on the splash meant the
+  /// globe lurching upward as the mark appeared.
+  static const double _aspect = 1215 / 401;
+
   @override
   Widget build(BuildContext context) {
+    // Brightness is read here only to choose an asset variant, which
+    // `.agents/rules/03-styling.md` rule 5 allows. The artwork has ink letters,
+    // so it cannot sit on a dark ground, and the reversed file has not been
+    // supplied — dark grounds and [reverse] use the drawn stand-in below.
+    if (!reverse && !context.isDark) {
+      return Image.asset(
+        _asset,
+        width: width,
+        height: width / _aspect,
+        filterQuality: FilterQuality.high,
+        semanticLabel: 'WorkSettle',
+      );
+    }
+
     final showTagline = width >= _taglineThreshold;
 
-    // TODO(assets): replace this whole subtree with the supplied SVG once
-    // worksettle.svg / worksettle-reverse.svg land in assets/images/.
+    // TODO(assets): replace this subtree with worksettle-reverse.svg once it is
+    // supplied.
     final ink = reverse ? context.ws.voiceForeground : context.colors.onSurface;
     final red = reverse ? context.ws.redOnSurface : context.colors.primary;
 
@@ -65,26 +94,28 @@ class WsWordmark extends StatelessWidget {
                     TextSpan(text: 'ettle', style: TextStyle(color: ink)),
                   ],
                 ),
+                // Line height 1.0 — any extra leading opens a visible gap
+                // between the wordmark and the rule beneath it.
                 style: context.text.headlineLarge?.copyWith(
                   fontSize: width * 0.19,
-                  height: 1.1,
+                  height: 1.0,
                 ),
               ),
             ),
             if (showTagline) ...[
-              const SizedBox(height: WsSpacing.xs),
+              // The rule, figures and tagline sit tight under the wordmark so
+              // the lockup reads as one mark and fits a 56 dp app bar.
               Row(
                 children: [
                   Expanded(child: Divider(color: ink, height: 1)),
                   Padding(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: WsSpacing.sm),
-                    child: Icon(Icons.groups_rounded, size: 12, color: red),
+                        const EdgeInsets.symmetric(horizontal: WsSpacing.xs),
+                    child: Icon(Icons.groups_rounded, size: 10, color: red),
                   ),
                   Expanded(child: Divider(color: ink, height: 1)),
                 ],
               ),
-              const SizedBox(height: 2),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(

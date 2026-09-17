@@ -17,16 +17,20 @@ import '../../../../shared/shared.dart';
 /// A locked module routes to the paywall rather than the feature, which is the
 /// only way the paywall is ever reached (design system Pattern D).
 class ModuleGrid extends ConsumerWidget {
-  const ModuleGrid({required this.modules, super.key});
+  const ModuleGrid({required this.modules, this.entrance, super.key});
 
   final List<WsModule> modules;
+
+  /// The screen's entrance timeline. Null shows every tile at rest; otherwise
+  /// the tiles rise in one after another.
+  final Animation<double>? entrance;
 
   static String _routeFor(WsModule module) => switch (module) {
         WsModule.jobMatching => Routes.jobs,
         WsModule.profileMatching => Routes.profile,
         WsModule.eligibility => Routes.programs,
         WsModule.crsPredictor => Routes.crsOverview,
-        WsModule.assistant => Routes.assistant,
+        WsModule.assistant => Routes.assistantChat,
         WsModule.checklist => Routes.checklist,
         WsModule.appointments => Routes.appointments,
       };
@@ -45,19 +49,25 @@ class ModuleGrid extends ConsumerWidget {
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final module in modules)
+            for (final (index, module) in modules.indexed)
               SizedBox(
                 width: tileWidth,
-                child: _ModuleTile(
-                  module: module,
-                  locked: module.isPremium && tier == PlanTier.free,
-                  onTap: () {
-                    final locked = module.isPremium && tier == PlanTier.free;
-                    context.push(
-                      locked ? Routes.paywall : _routeFor(module),
-                      extra: locked ? module.label : null,
-                    );
-                  },
+                child: WsRiseIn(
+                  entrance: entrance ?? kAlwaysCompleteAnimation,
+                  begin: 0.26 + index * 0.06,
+                  end: 0.66 + index * 0.06,
+                  fromScale: 0.94,
+                  child: _ModuleTile(
+                    module: module,
+                    locked: module.isPremium && tier == PlanTier.free,
+                    onTap: () {
+                      final locked = module.isPremium && tier == PlanTier.free;
+                      context.push(
+                        locked ? Routes.paywall : _routeFor(module),
+                        extra: locked ? module.label : null,
+                      );
+                    },
+                  ),
                 ),
               ),
           ],

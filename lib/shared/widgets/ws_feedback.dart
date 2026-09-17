@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/theme.dart';
 import 'ws_buttons.dart';
+import 'ws_rise_in.dart';
 
 /// Milestone screens. `design/worksettle-design-system.md` section 17.
 ///
@@ -68,29 +69,51 @@ class WsSuccessScreen extends StatelessWidget {
                   const Spacer(),
                   _Glyph(milestone: milestone, icon: icon),
                   const SizedBox(height: WsSpacing.xxl),
+                  // The glyph lands first; the words and the way forward
+                  // follow it, so the moment reads in order.
                   // Centred body copy is allowed here and on only two other
                   // screens in the product.
-                  Text(
-                    headline,
-                    style: context.text.headlineLarge,
-                    textAlign: TextAlign.center,
+                  WsAppear(
+                    delay: 0.4,
+                    duration: WsMotion.entranceSequence,
+                    child: Text(
+                      headline,
+                      style: context.text.headlineLarge,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: WsSpacing.md),
-                  Text(
-                    body,
-                    style: context.text.bodyMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                    textAlign: TextAlign.center,
+                  WsAppear(
+                    delay: 0.5,
+                    duration: WsMotion.entranceSequence,
+                    child: Text(
+                      body,
+                      style: context.text.bodyMedium
+                          ?.copyWith(color: context.colors.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const Spacer(),
-                  WsPrimaryButton(label: primaryLabel, onPressed: onPrimary),
-                  if (secondaryLabel != null) ...[
-                    const SizedBox(height: WsSpacing.md),
-                    WsSecondaryButton(
-                      label: secondaryLabel!,
-                      onPressed: onSecondary,
+                  WsAppear(
+                    delay: 0.62,
+                    duration: WsMotion.entranceSequence,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        WsPrimaryButton(
+                          label: primaryLabel,
+                          onPressed: onPrimary,
+                        ),
+                        if (secondaryLabel != null) ...[
+                          const SizedBox(height: WsSpacing.md),
+                          WsSecondaryButton(
+                            label: secondaryLabel!,
+                            onPressed: onSecondary,
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -107,35 +130,107 @@ class _Glyph extends StatelessWidget {
   final WsMilestone milestone;
   final IconData icon;
 
+  static const double _size = 96;
+  static const double _glyph = 44;
+
   @override
   Widget build(BuildContext context) {
-    const double size = 96;
+    // Open versus filled is the signal, so each arrives in its own way: the
+    // ring is *drawn* (a step completed), the disc *drops in* whole (a
+    // transaction settled). The check pops last in both.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: WsMotion.duration(context, WsMotion.focal),
+      builder: (context, t, _) {
+        final mark = WsMotion.staggered(t, 0.45, 1, curve: Curves.easeOutBack);
 
-    if (milestone == WsMilestone.settled) {
-      // Filled ink disc, white check.
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: context.ws.verdictFilledSurface,
-        ),
-        child: Icon(icon, size: 44, color: context.ws.verdictFilledLabel),
-      );
-    }
+        if (milestone == WsMilestone.settled) {
+          final disc = WsMotion.staggered(t, 0, 0.6, curve: Curves.easeOutBack);
+          return SizedBox.square(
+            dimension: _size,
+            child: Transform.scale(
+              scale: disc,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: context.ws.verdictFilledSurface,
+                ),
+                child: Transform.scale(
+                  scale: mark,
+                  child: Icon(
+                    icon,
+                    size: _glyph,
+                    color: context.ws.verdictFilledLabel,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
 
-    // Open red ring.
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: context.ws.redTint,
-        border: Border.all(color: context.colors.primary, width: 3),
-      ),
-      child: Icon(icon, size: 44, color: context.colors.primary),
+        return SizedBox.square(
+          dimension: _size,
+          child: CustomPaint(
+            painter: _GlyphRingPainter(
+              progress: WsMotion.staggered(t, 0, 0.7),
+              ring: context.colors.primary,
+              tint: context.ws.redTint,
+            ),
+            child: Center(
+              child: Transform.scale(
+                scale: mark,
+                child: Icon(icon, size: _glyph, color: context.colors.primary),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
+}
+
+/// The open red ring, drawn clockwise from twelve o'clock up to [progress],
+/// over a tint that fades in with it.
+class _GlyphRingPainter extends CustomPainter {
+  const _GlyphRingPainter({
+    required this.progress,
+    required this.ring,
+    required this.tint,
+  });
+
+  final double progress;
+  final Color ring;
+  final Color tint;
+
+  static const double _stroke = 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (math.min(size.width, size.height) - _stroke) / 2;
+    final p = progress.clamp(0.0, 1.0);
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = tint.withValues(alpha: tint.a * p),
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * p,
+      false,
+      Paint()
+        ..color = ring
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GlyphRingPainter old) =>
+      old.progress != progress || old.ring != ring || old.tint != tint;
 }
 
 /// Scattered maple leaves and dots at 6–10 px.

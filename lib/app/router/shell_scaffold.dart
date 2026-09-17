@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/shared.dart';
 import '../theme/theme.dart';
 
-/// The five destinations, fixed for the life of the app.
-/// `design/worksettle-design-system.md` section 14.
+/// The five destinations.
 ///
-/// **Home · Jobs · Immigration · Settlement · Profile.** Everything else is
-/// reached from inside one of them. Active icon *and* label both go Settle Red;
-/// inactive is Grey 500. **Labels never hide.**
+/// **Home · Immigration · AI Agent · Jobs · Settlement.** The agent takes the
+/// middle slot: it is the thumb's easiest reach and the first place the eye
+/// lands, and it sits between the two things the product is actually about —
+/// immigration on its left, jobs on its right.
 ///
-/// The filled icon marks the active tab and the outline marks the rest — the
-/// two Material icon styles doing the job the design system gives them
+/// **Profile is no longer a destination.** It moved to the avatar in the
+/// leading slot of every tab's app bar, because five is the ceiling for a
+/// bottom bar — a sixth tab leaves 60 dp per label on a 360 dp phone, and the
+/// design system says labels never hide.
+///
+/// Active icon *and* label both go Settle Red; inactive is Grey 500. The
+/// filled icon marks the active tab and the outline marks the rest — the two
+/// Material icon styles doing the job the design system gives them
 /// (`.agents/rules/01-stack.md`).
 class ShellScaffold extends StatelessWidget {
   const ShellScaffold({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
+  /// The order here **is** the branch order in `app_router.dart`. Changing one
+  /// without the other silently sends a tab to the wrong stack.
   static const List<({String label, IconData icon, IconData active})>
       destinations = [
     (
@@ -26,24 +35,27 @@ class ShellScaffold extends StatelessWidget {
       active: Icons.home_rounded,
     ),
     (
+      label: 'Immigration',
+      icon: Icons.flight_takeoff_outlined,
+      active: Icons.flight_takeoff_rounded,
+    ),
+    // TODO(assets): the client's agent logo replaces these two glyphs. The
+    // placeholder lives in `WsAgentMark` so the tab and the screen change
+    // together.
+    (
+      label: 'AI Agent',
+      icon: WsAgentMark.navIcon,
+      active: WsAgentMark.navIconActive,
+    ),
+    (
       label: 'Jobs',
       icon: Icons.work_outline_rounded,
       active: Icons.work_rounded,
     ),
     (
-      label: 'Immigration',
-      icon: Icons.flight_takeoff_outlined,
-      active: Icons.flight_takeoff_rounded,
-    ),
-    (
       label: 'Settlement',
       icon: Icons.checklist_outlined,
       active: Icons.checklist_rounded,
-    ),
-    (
-      label: 'Profile',
-      icon: Icons.person_outline_rounded,
-      active: Icons.person_rounded,
     ),
   ];
 

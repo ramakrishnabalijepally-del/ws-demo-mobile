@@ -26,30 +26,6 @@ enum ChecklistPhase {
   final String label;
 }
 
-/// A bookable consultation.
-class Consultation {
-  const Consultation({
-    required this.id,
-    required this.title,
-    required this.minutes,
-    required this.price,
-    required this.summary,
-    required this.consultant,
-    required this.credential,
-  });
-
-  final String id;
-  final String title;
-  final int minutes;
-
-  /// Canadian dollars. Zero means free.
-  final int price;
-
-  final String summary;
-  final String consultant;
-  final String credential;
-}
-
 /// A settlement resource.
 class Resource {
   const Resource({
@@ -152,78 +128,6 @@ const List<ChecklistItem> mockChecklist = [
     detail: 'A secured card for six months is usually enough to rent without a '
         'guarantor.',
     phase: ChecklistPhase.settlingIn,
-  ),
-];
-
-/// K3–K4 — seven consultation types.
-const List<Consultation> mockConsultations = [
-  Consultation(
-    id: 'c1',
-    title: 'Profile assessment and pathway consultation',
-    minutes: 60,
-    price: 180,
-    summary: 'A full review of your profile against every program you could '
-        'reach, and a written pathway afterwards.',
-    consultant: 'Daniel Okonkwo',
-    credential: 'RCIC · R512844',
-  ),
-  Consultation(
-    id: 'c2',
-    title: 'General immigration consultation',
-    minutes: 30,
-    price: 95,
-    summary: 'Bring your questions. Good for a second opinion on a decision '
-        'you have already half made.',
-    consultant: 'Priya Raman',
-    credential: 'RCIC · R709122',
-  ),
-  Consultation(
-    id: 'c3',
-    title: 'Phone consultation',
-    minutes: 15,
-    price: 45,
-    summary: 'One question, answered properly.',
-    consultant: 'Priya Raman',
-    credential: 'RCIC · R709122',
-  ),
-  Consultation(
-    id: 'c4',
-    title: 'Alberta PNP program guidance',
-    minutes: 45,
-    price: 140,
-    summary: 'Which Alberta stream fits, and what would need to change for the '
-        'others.',
-    consultant: 'Mei Lin Chow',
-    credential: 'RCIC · R641003',
-  ),
-  Consultation(
-    id: 'c5',
-    title: 'British Columbia PNP program guidance',
-    minutes: 45,
-    price: 140,
-    summary: 'BC Tech and Skills Immigration, and what the job offer has to '
-        'look like.',
-    consultant: 'Mei Lin Chow',
-    credential: 'RCIC · R641003',
-  ),
-  Consultation(
-    id: 'c6',
-    title: 'Rural and Northern Immigration Pilot consultation',
-    minutes: 45,
-    price: 140,
-    summary: 'The participating communities, and how a recommendation works.',
-    consultant: 'Daniel Okonkwo',
-    credential: 'RCIC · R512844',
-  ),
-  Consultation(
-    id: 'c7',
-    title: 'Call back — within Canada only',
-    minutes: 15,
-    price: 0,
-    summary: 'A free call back to point you at the right paid consultation, or '
-        'tell you that you do not need one.',
-    consultant: 'WorkSettle team',
-    credential: 'Not legal advice',
   ),
 ];
 

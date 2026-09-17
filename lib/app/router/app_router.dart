@@ -24,11 +24,13 @@ import 'shell_scaffold.dart';
 ///    bottom navigation, because there is nothing to navigate between yet.
 /// 2. **The shell** — a `StatefulShellRoute` with five branches, each keeping
 ///    its own stack, so switching tabs and coming back returns you where you
-///    were.
-/// 3. **Above the shell** — the assistant and the paywall, pushed full-screen
-///    on the root navigator. The assistant because voice mode inverts the whole
-///    screen; the paywall because it is reached by touching a locked feature
-///    and is never a destination.
+///    were: **Home · Immigration · AI Agent · Jobs · Settlement**, in the order
+///    `ShellScaffold.destinations` lists them.
+/// 3. **Above the shell** — profile, voice mode and the paywall, pushed
+///    full-screen on the root navigator. Profile because it opens from the
+///    avatar in every tab rather than from the bar; voice mode because it
+///    inverts the whole screen; the paywall because it is reached by touching a
+///    locked feature and is never a destination.
 final routerProvider = Provider<GoRouter>((ref) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -72,20 +74,71 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // --- Above the shell -----------------------------------------------
+      // Profile left the bottom bar when the AI agent took its place. It
+      // opens from the avatar in every tab, above the shell, so the bar
+      // stays put underneath and Back returns you to your tab.
       GoRoute(
-        path: Routes.assistant,
+        path: Routes.profile,
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const AssistantScreen(),
+        builder: (_, __) => const ProfileScreen(),
         routes: [
           GoRoute(
-            path: 'voice',
-            parentNavigatorKey: rootKey,
-            builder: (_, __) => const VoiceModeScreen(),
+            path: 'edit',
+            // ?tab=immigration opens the Immigration profile tab, which is
+            // where that tab's own Edit button leads.
+            builder: (_, state) => ProfileEditScreen(
+              initialTab: state.uri.queryParameters['tab'] == 'immigration'
+                  ? ProfileEditTab.immigration
+                  : ProfileEditTab.basic,
+            ),
           ),
           GoRoute(
-            path: 'saved',
-            parentNavigatorKey: rootKey,
-            builder: (_, __) => const SavedConversationsScreen(),
+            path: 'complete',
+            builder: (_, __) => const ProfileCompletionScreen(),
+            routes: [
+              GoRoute(
+                path: ':section',
+                builder: (_, state) => ProfileSectionScreen(
+                  sectionId: state.pathParameters['section']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'settings',
+            builder: (_, __) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'notifications',
+                builder: (_, __) => const NotificationSettingsScreen(),
+              ),
+              GoRoute(
+                path: 'security',
+                builder: (_, __) => const SecuritySettingsScreen(),
+              ),
+              GoRoute(
+                path: 'appearance',
+                builder: (_, __) => const AppearanceSettingsScreen(),
+              ),
+              GoRoute(
+                path: 'help',
+                builder: (_, __) => const HelpScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'faq',
+                    builder: (_, __) => const FaqScreen(),
+                  ),
+                  GoRoute(
+                    path: 'terms',
+                    builder: (_, __) => const LegalScreen.terms(),
+                  ),
+                  GoRoute(
+                    path: 'privacy',
+                    builder: (_, __) => const LegalScreen.privacy(),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -157,7 +210,124 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // 2 · Jobs
+          // 2 · Immigration
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.immigration,
+                builder: (_, __) => const ImmigrationScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'crs',
+                    builder: (_, __) => const CrsOverviewScreen(),
+                    routes: [
+                      // The profile's own section form, composed here rather
+                      // than rebuilt in Immigration: one form, one set of
+                      // answers, reachable from both places.
+                      GoRoute(
+                        path: 'section/:section',
+                        builder: (_, state) => ProfileSectionScreen(
+                          sectionId: state.pathParameters['section']!,
+                          fromCrs: true,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'calculating',
+                        builder: (_, state) => CrsCalculatingScreen(
+                          toResult:
+                              state.uri.queryParameters['result'] != 'false',
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'result',
+                        builder: (_, __) => const CrsResultScreen(),
+                        routes: [
+                          GoRoute(
+                            path: 'breakdown',
+                            builder: (_, __) => const CrsBreakdownScreen(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'pnp',
+                    builder: (_, __) => const PnpProvincesScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':province',
+                        builder: (_, state) => PnpStreamsScreen(
+                          provinceCode: state.pathParameters['province']!,
+                        ),
+                        routes: [
+                          GoRoute(
+                            path: ':stream',
+                            builder: (_, state) => PnpStreamDetailScreen(
+                              provinceCode: state.pathParameters['province']!,
+                              streamName: state.pathParameters['stream']!,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'programs',
+                    builder: (_, __) => const ProgramsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'compare',
+                    builder: (_, __) => const CompareScreen(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // 3 · AI Agent
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.assistant,
+                builder: (_, __) => const AiAgentScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'chat',
+                    builder: (_, __) => const AssistantScreen(),
+                  ),
+                  GoRoute(
+                    path: 'saved',
+                    builder: (_, __) => const SavedConversationsScreen(),
+                  ),
+                  // Voice mode inverts the whole screen, so it goes above the
+                  // shell rather than under the bottom bar.
+                  GoRoute(
+                    path: 'voice',
+                    parentNavigatorKey: rootKey,
+                    builder: (_, __) => const VoiceModeScreen(),
+                  ),
+                  GoRoute(
+                    path: 'appointments',
+                    builder: (_, __) => const AppointmentsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'booked',
+                        builder: (_, __) => const AppointmentBookedScreen(),
+                      ),
+                      GoRoute(
+                        path: ':id',
+                        builder: (_, state) => AppointmentDetailScreen(
+                          consultationId: state.pathParameters['id']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // 4 · Jobs
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -232,68 +402,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // 3 · Immigration
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.immigration,
-                builder: (_, __) => const ImmigrationScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'crs',
-                    builder: (_, __) => const CrsOverviewScreen(),
-                    routes: [
-                      GoRoute(
-                        path: 'calculator',
-                        builder: (_, __) => const CrsCalculatorScreen(),
-                      ),
-                      GoRoute(
-                        path: 'result',
-                        builder: (_, __) => const CrsResultScreen(),
-                        routes: [
-                          GoRoute(
-                            path: 'breakdown',
-                            builder: (_, __) => const CrsBreakdownScreen(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  GoRoute(
-                    path: 'pnp',
-                    builder: (_, __) => const PnpProvincesScreen(),
-                    routes: [
-                      GoRoute(
-                        path: ':province',
-                        builder: (_, state) => PnpStreamsScreen(
-                          provinceCode: state.pathParameters['province']!,
-                        ),
-                        routes: [
-                          GoRoute(
-                            path: ':stream',
-                            builder: (_, state) => PnpStreamDetailScreen(
-                              provinceCode: state.pathParameters['province']!,
-                              streamName: state.pathParameters['stream']!,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  GoRoute(
-                    path: 'programs',
-                    builder: (_, __) => const ProgramsScreen(),
-                  ),
-                  GoRoute(
-                    path: 'compare',
-                    builder: (_, __) => const CompareScreen(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          // 4 · Settlement
+          // 5 · Settlement
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -323,58 +432,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'resources',
                     builder: (_, __) => const ResourcesScreen(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          // 5 · Profile
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.profile,
-                builder: (_, __) => const ProfileScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'edit',
-                    builder: (_, __) => const ProfileEditScreen(),
-                  ),
-                  GoRoute(
-                    path: 'settings',
-                    builder: (_, __) => const SettingsScreen(),
-                    routes: [
-                      GoRoute(
-                        path: 'notifications',
-                        builder: (_, __) => const NotificationSettingsScreen(),
-                      ),
-                      GoRoute(
-                        path: 'security',
-                        builder: (_, __) => const SecuritySettingsScreen(),
-                      ),
-                      GoRoute(
-                        path: 'appearance',
-                        builder: (_, __) => const AppearanceSettingsScreen(),
-                      ),
-                      GoRoute(
-                        path: 'help',
-                        builder: (_, __) => const HelpScreen(),
-                        routes: [
-                          GoRoute(
-                            path: 'faq',
-                            builder: (_, __) => const FaqScreen(),
-                          ),
-                          GoRoute(
-                            path: 'terms',
-                            builder: (_, __) => const LegalScreen.terms(),
-                          ),
-                          GoRoute(
-                            path: 'privacy',
-                            builder: (_, __) => const LegalScreen.privacy(),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ],
               ),

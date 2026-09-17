@@ -3,7 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers.dart';
 import 'router/app_router.dart';
+import 'router/page_transitions.dart';
 import 'theme/theme.dart';
+
+/// Both themes carry the router's one screen transition.
+final ThemeData _light =
+    WorkSettleTheme.light.copyWith(pageTransitionsTheme: wsPageTransitions);
+final ThemeData _dark =
+    WorkSettleTheme.dark.copyWith(pageTransitionsTheme: wsPageTransitions);
 
 /// The root of the WorkSettle candidate app.
 class WorkSettleApp extends ConsumerWidget {
@@ -17,8 +24,8 @@ class WorkSettleApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'WorkSettle',
       debugShowCheckedModeBanner: false,
-      theme: WorkSettleTheme.light,
-      darkTheme: WorkSettleTheme.dark,
+      theme: _light,
+      darkTheme: _dark,
       themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {

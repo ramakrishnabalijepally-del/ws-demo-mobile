@@ -6,6 +6,7 @@ import '../../../../../app/providers.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
+import '../../../shared/presentation/widgets/auth_scaffold.dart';
 import '../widgets/social_sign_in_row.dart';
 
 /// B1–B3 — sign in, and its two error states.
@@ -23,9 +24,15 @@ class SignInScreen extends ConsumerStatefulWidget {
   ConsumerState<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignInScreenState extends ConsumerState<SignInScreen> {
+class _SignInScreenState extends ConsumerState<SignInScreen>
+    with SingleTickerProviderStateMixin {
   final _email = TextEditingController();
   final _password = TextEditingController();
+
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: WsMotion.focal,
+  );
 
   bool _remember = false;
   bool _obscure = true;
@@ -33,9 +40,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   String? _passwordError;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (WsMotion.reduced(context)) {
+      _entrance.value = 1;
+    } else if (_entrance.isDismissed) {
+      _entrance.forward();
+    }
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _entrance.dispose();
     super.dispose();
   }
 
@@ -69,99 +87,132 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: WsSpacing.xl,
-            vertical: WsSpacing.xxl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Center(child: WsWordmark(width: 180)),
-              const SizedBox(height: WsSpacing.huge),
-              Text(
-                'Sign in to your account',
-                style: context.text.titleLarge,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: WsSpacing.xxl),
-              WsField(
-                label: 'Email',
-                required: true,
-                controller: _email,
-                hint: 'name@example.com',
-                error: _emailError,
-                keyboardType: TextInputType.emailAddress,
-                trailingIcon: Icons.mail_outline_rounded,
-              ),
-              const SizedBox(height: WsSpacing.xl),
-              WsField(
-                label: 'Password',
-                required: true,
-                controller: _password,
-                hint: 'Your password',
-                error: _passwordError,
-                obscure: _obscure,
-                trailingIcon: _obscure
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                onTrailingTap: () => setState(() => _obscure = !_obscure),
-              ),
-              const SizedBox(height: WsSpacing.sm),
-              // Both halves stay on one line at 360 dp only because the link is
-              // "Forgot password?" rather than "Forgot your password?" — the
-              // longer wording squeezed the checkbox label past its own width.
-              // The Row stays bounded because WsCheckboxRow contains an
-              // Expanded, which a Wrap would not give a width to.
-              Row(
-                children: [
-                  Expanded(
-                    child: WsCheckboxRow(
-                      label: 'Remember me',
-                      value: _remember,
-                      onChanged: (v) => setState(() => _remember = v),
-                    ),
-                  ),
-                  WsLink(
-                    label: 'Forgot password?',
-                    underline: false,
-                    onPressed: () => context.push(Routes.forgotPassword),
-                  ),
-                ],
-              ),
-              const SizedBox(height: WsSpacing.xl),
-              WsPrimaryButton(
-                label: 'Sign In',
-                forward: false,
-                onPressed: _submit,
-              ),
-              const SizedBox(height: WsSpacing.xxl),
-              const SocialSignInRow(),
-              const SizedBox(height: WsSpacing.xxl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      "Don't have an account?",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.bodyMedium
-                          ?.copyWith(color: context.colors.onSurfaceVariant),
-                    ),
-                  ),
-                  WsLink(
-                    label: 'Register',
-                    onPressed: () => context.push(Routes.signUp),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+    return AuthScaffold(
+      entrance: _entrance,
+      child: _SignInForm(
+        email: _email,
+        password: _password,
+        emailError: _emailError,
+        passwordError: _passwordError,
+        obscure: _obscure,
+        remember: _remember,
+        onToggleObscure: () => setState(() => _obscure = !_obscure),
+        onRememberChanged: (v) => setState(() => _remember = v),
+        onSubmit: _submit,
       ),
+    );
+  }
+}
+
+class _SignInForm extends StatelessWidget {
+  const _SignInForm({
+    required this.email,
+    required this.password,
+    required this.emailError,
+    required this.passwordError,
+    required this.obscure,
+    required this.remember,
+    required this.onToggleObscure,
+    required this.onRememberChanged,
+    required this.onSubmit,
+  });
+
+  final TextEditingController email;
+  final TextEditingController password;
+  final String? emailError;
+  final String? passwordError;
+  final bool obscure;
+  final bool remember;
+  final VoidCallback onToggleObscure;
+  final ValueChanged<bool> onRememberChanged;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Welcome back', style: context.text.headlineLarge),
+        const SizedBox(height: WsSpacing.xs),
+        Text(
+          'Sign in to your account to pick up your journey.',
+          style: context.text.bodyMedium
+              ?.copyWith(color: context.colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: WsSpacing.xxl),
+        WsField(
+          label: 'Email',
+          required: true,
+          controller: email,
+          hint: 'name@example.com',
+          error: emailError,
+          keyboardType: TextInputType.emailAddress,
+          trailingIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsField(
+          label: 'Password',
+          required: true,
+          controller: password,
+          hint: 'Your password',
+          error: passwordError,
+          obscure: obscure,
+          trailingIcon: obscure
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          onTrailingTap: onToggleObscure,
+        ),
+        const SizedBox(height: WsSpacing.sm),
+        // Both halves stay on one line at 360 dp only because the link is
+        // "Forgot password?" rather than "Forgot your password?" — the
+        // longer wording squeezed the checkbox label past its own width.
+        // The Row stays bounded because WsCheckboxRow contains an
+        // Expanded, which a Wrap would not give a width to.
+        Row(
+          children: [
+            Expanded(
+              child: WsCheckboxRow(
+                label: 'Remember me',
+                value: remember,
+                onChanged: onRememberChanged,
+              ),
+            ),
+            WsLink(
+              label: 'Forgot password?',
+              underline: false,
+              onPressed: () => context.push(Routes.forgotPassword),
+            ),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsPrimaryButton(
+          label: 'Sign In',
+          forward: false,
+          onPressed: onSubmit,
+        ),
+        const SizedBox(height: WsSpacing.xxl),
+        const SocialSignInRow(),
+        const SizedBox(height: WsSpacing.xxl),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                "Don't have an account?",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodyMedium?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+            WsLink(
+              label: 'Register',
+              onPressed: () => context.push(Routes.signUp),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

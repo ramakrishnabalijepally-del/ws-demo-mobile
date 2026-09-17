@@ -22,8 +22,13 @@ const List<AppNotification> mockNotifications = [
   ),
   AppNotification(
     id: 'n3',
-    title: 'Express Entry draw 302 closed at 468 — your predicted score is in '
-        'range',
+    // The draw is news and is the same for everyone. Whether it puts *this*
+    // reader in range is a fact about their profile, and a notification
+    // fixture cannot know it — saying so told every candidate they were in
+    // range, including the ones who were not.
+    // TODO(backend): real draws arrive from the feed, and the comparison is
+    // made against the live score once it has been generated.
+    title: 'Express Entry draw 302 closed at 468',
     time: 'Yesterday',
     kind: NotificationKind.immigration,
   ),
@@ -85,9 +90,10 @@ const List<Tip> mockTips = [
           'abilities is worth up to 50 points on its own, and more again through '
           'the skill transferability combinations. A second test sitting costs '
           'less than almost any other route to the same points.',
-      'A provincial nomination is worth 600 points and effectively guarantees '
-          'an invitation. If your occupation is in demand in a specific '
-          'province, that is usually the shortest path.',
+      'A provincial nomination is worth 600 points, which in practice puts '
+          'you at the top of the pool — the invitation is still IRCC\'s '
+          'decision. If your occupation is in demand in a specific province, '
+          'that is usually the shortest path.',
       'French matters more than most applicants realise: strong French adds up '
           'to 50 points even if English is your stronger language, and several '
           'draws have been French-only.',

@@ -4,9 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
+import '../../../shared/presentation/widgets/auth_scaffold.dart';
 import '../../../sign_in/presentation/widgets/social_sign_in_row.dart';
 
 /// B4 — create an account.
+///
+/// The same branded shape as sign in — logo on the red tint with the halftone
+/// behind it, the form on a sheet that rises over it — because these two
+/// screens are one moment in the product, seen a minute apart.
 ///
 /// Creating the account leads into the registration flow rather than straight
 /// to the dashboard: design system Pattern A puts one decision per screen and
@@ -18,16 +23,32 @@ class SignUpScreen extends StatefulWidget {
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignUpScreenState extends State<SignUpScreen>
+    with SingleTickerProviderStateMixin {
   final _first = TextEditingController();
   final _last = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: WsMotion.focal,
+  );
+
   bool _obscure = true;
   String? _passwordError;
   String? _confirmError;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (WsMotion.reduced(context)) {
+      _entrance.value = 1;
+    } else if (_entrance.isDismissed) {
+      _entrance.forward();
+    }
+  }
 
   @override
   void dispose() {
@@ -36,6 +57,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _phone.dispose();
     _password.dispose();
     _confirm.dispose();
+    _entrance.dispose();
     super.dispose();
   }
 
@@ -56,103 +78,131 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: WsSpacing.xl,
-            vertical: WsSpacing.lg,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Center(child: WsWordmark(width: 170)),
-              const SizedBox(height: WsSpacing.xxl),
-              Text(
-                'Create your account',
-                style: context.text.titleLarge,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: WsSpacing.sm),
-              Text(
-                'Basic profile and job search are always free.',
+    return AuthScaffold(
+      entrance: _entrance,
+      onBack: () => context.go(Routes.signIn),
+      child: _SignUpForm(
+        first: _first,
+        last: _last,
+        phone: _phone,
+        password: _password,
+        confirm: _confirm,
+        obscure: _obscure,
+        passwordError: _passwordError,
+        confirmError: _confirmError,
+        onToggleObscure: () => setState(() => _obscure = !_obscure),
+        onSubmit: _submit,
+      ),
+    );
+  }
+}
+
+class _SignUpForm extends StatelessWidget {
+  const _SignUpForm({
+    required this.first,
+    required this.last,
+    required this.phone,
+    required this.password,
+    required this.confirm,
+    required this.obscure,
+    required this.passwordError,
+    required this.confirmError,
+    required this.onToggleObscure,
+    required this.onSubmit,
+  });
+
+  final TextEditingController first;
+  final TextEditingController last;
+  final TextEditingController phone;
+  final TextEditingController password;
+  final TextEditingController confirm;
+  final bool obscure;
+  final String? passwordError;
+  final String? confirmError;
+  final VoidCallback onToggleObscure;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Create your account', style: context.text.headlineLarge),
+        const SizedBox(height: WsSpacing.xs),
+        Text(
+          'Basic profile and job search are always free.',
+          style: context.text.bodyMedium
+              ?.copyWith(color: context.colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: WsSpacing.xxl),
+        WsField(
+          label: 'First Name',
+          required: true,
+          controller: first,
+          hint: 'Adam',
+          leadingIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsField(
+          label: 'Last Name',
+          required: true,
+          controller: last,
+          hint: 'Smith',
+          leadingIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsPhoneField(
+          label: 'Phone Number',
+          required: true,
+          controller: phone,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsField(
+          label: 'Password',
+          required: true,
+          controller: password,
+          obscure: obscure,
+          error: passwordError,
+          helper: 'At least 6 characters',
+          leadingIcon: Icons.lock_outline_rounded,
+          trailingIcon: obscure
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          onTrailingTap: onToggleObscure,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsField(
+          label: 'Confirm Password',
+          required: true,
+          controller: confirm,
+          obscure: obscure,
+          error: confirmError,
+          leadingIcon: Icons.lock_outline_rounded,
+        ),
+        const SizedBox(height: WsSpacing.xxl),
+        WsPrimaryButton(label: 'Create Account', onPressed: onSubmit),
+        const SizedBox(height: WsSpacing.xxl),
+        const SocialSignInRow(),
+        const SizedBox(height: WsSpacing.xxl),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                'Already have an account?',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: context.text.bodyMedium
                     ?.copyWith(color: context.colors.onSurfaceVariant),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: WsSpacing.xxl),
-              WsField(
-                label: 'First Name',
-                required: true,
-                controller: _first,
-                hint: 'Adam',
-                leadingIcon: Icons.person_outline_rounded,
-              ),
-              const SizedBox(height: WsSpacing.lg),
-              WsField(
-                label: 'Last Name',
-                required: true,
-                controller: _last,
-                hint: 'Smith',
-                leadingIcon: Icons.person_outline_rounded,
-              ),
-              const SizedBox(height: WsSpacing.lg),
-              WsPhoneField(
-                label: 'Phone Number',
-                required: true,
-                controller: _phone,
-              ),
-              const SizedBox(height: WsSpacing.lg),
-              WsField(
-                label: 'Password',
-                required: true,
-                controller: _password,
-                obscure: _obscure,
-                error: _passwordError,
-                helper: 'At least 6 characters',
-                leadingIcon: Icons.lock_outline_rounded,
-                trailingIcon: _obscure
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                onTrailingTap: () => setState(() => _obscure = !_obscure),
-              ),
-              const SizedBox(height: WsSpacing.lg),
-              WsField(
-                label: 'Confirm Password',
-                required: true,
-                controller: _confirm,
-                obscure: _obscure,
-                error: _confirmError,
-                leadingIcon: Icons.lock_outline_rounded,
-              ),
-              const SizedBox(height: WsSpacing.xxl),
-              WsPrimaryButton(label: 'Create Account', onPressed: _submit),
-              const SizedBox(height: WsSpacing.xxl),
-              const SocialSignInRow(),
-              const SizedBox(height: WsSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Already have an account?',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.bodyMedium
-                          ?.copyWith(color: context.colors.onSurfaceVariant),
-                    ),
-                  ),
-                  WsLink(
-                    label: 'Sign In',
-                    onPressed: () => context.go(Routes.signIn),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            WsLink(
+              label: 'Sign In',
+              onPressed: () => context.go(Routes.signIn),
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

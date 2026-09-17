@@ -77,14 +77,18 @@ class RegistrationScreen extends ConsumerWidget {
           ),
         ),
         body: SafeArea(
-          child: switch (state.step) {
-            RegistrationStep.basicInfo => const StepBasicInfo(),
-            RegistrationStep.contact => const StepContact(),
-            RegistrationStep.profileType => const StepProfileType(),
-            RegistrationStep.goals => const StepGoals(),
-            RegistrationStep.jobCategories => const StepJobCategories(),
-            RegistrationStep.review => const StepReview(),
-          },
+          // Each step slides in as the segment bar above advances.
+          child: WsStepSwitcher(
+            stepKey: state.step,
+            child: switch (state.step) {
+              RegistrationStep.basicInfo => const StepBasicInfo(),
+              RegistrationStep.contact => const StepContact(),
+              RegistrationStep.profileType => const StepProfileType(),
+              RegistrationStep.goals => const StepGoals(),
+              RegistrationStep.jobCategories => const StepJobCategories(),
+              RegistrationStep.review => const StepReview(),
+            },
+          ),
         ),
       ),
     );

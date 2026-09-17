@@ -15,11 +15,9 @@ abstract final class Routes {
 
   static const String registration = '/registration';
 
-  /// The assistant is a full surface of its own, and voice mode inverts the
-  /// whole screen — so it sits above the shell, not inside a tab.
-  static const String assistant = '/assistant';
+  /// Voice mode inverts the whole screen, so it is pushed above the shell even
+  /// though the agent itself is a tab.
   static const String assistantVoice = '/assistant/voice';
-  static const String assistantSaved = '/assistant/saved';
 
   /// Reached only by touching a locked feature. **Never a nav destination.**
   static const String paywall = '/upgrade';
@@ -52,8 +50,17 @@ abstract final class Routes {
   // --- Shell branch 3 · Immigration ------------------------------------------
   static const String immigration = '/immigration';
   static const String crsOverview = '/immigration/crs';
-  static const String crsCalculator = '/immigration/crs/calculator';
   static const String crsResult = '/immigration/crs/result';
+
+  /// The reveal. Pushed when the candidate asks for their score, and takes a
+  /// `result` query parameter — whether to open [crsResult] afterwards, or
+  /// return the candidate to the screen they asked from.
+  static const String crsCalculating = '/immigration/crs/calculating';
+
+  /// A profile section's form, opened from the CRS Predictor. The same screen
+  /// and the same answers as [profileSection]; this route only keeps the
+  /// candidate inside the Immigration tab while they fill it in.
+  static const String crsSection = '/immigration/crs/section/:section';
   static const String crsBreakdown = '/immigration/crs/result/breakdown';
   static const String pnpProvinces = '/immigration/pnp';
   static const String pnpStreams = '/immigration/pnp/:province';
@@ -62,17 +69,35 @@ abstract final class Routes {
   static const String programs = '/immigration/programs';
   static const String compare = '/immigration/compare';
 
-  // --- Shell branch 4 · Settlement -------------------------------------------
+  // --- Shell branch 3 · AI Agent ---------------------------------------------
+  /// The agent hub — what it noticed, the way into the conversation, and the
+  /// way to a licensed human.
+  static const String assistant = '/assistant';
+  static const String assistantChat = '/assistant/chat';
+  static const String assistantSaved = '/assistant/saved';
+
+  /// Appointments moved here from Settlement: the agent is what works out that
+  /// a question needs a person.
+  static const String appointments = '/assistant/appointments';
+  static const String appointmentBooked = '/assistant/appointments/booked';
+  static const String appointmentDetail = '/assistant/appointments/:id';
+
+  // --- Shell branch 5 · Settlement -------------------------------------------
   static const String settlement = '/settlement';
   static const String checklist = '/settlement/checklist';
-  static const String appointments = '/settlement/appointments';
-  static const String appointmentDetail = '/settlement/appointments/:id';
-  static const String appointmentBooked = '/settlement/appointments/booked';
   static const String resources = '/settlement/resources';
 
-  // --- Shell branch 5 · Profile ----------------------------------------------
+  // --- Above the shell · Profile ---------------------------------------------
+  /// Profile left the bottom bar when the AI agent took its place. It opens
+  /// from the avatar in every tab's app bar, above the shell, so the bar stays
+  /// put underneath and Back returns you to the tab you came from.
   static const String profile = '/profile';
   static const String profileEdit = '/profile/edit';
+
+  /// The profile checklist the completion ring opens, and one section's form.
+  /// The CRS score is calculated from these sections.
+  static const String profileCompletion = '/profile/complete';
+  static const String profileSection = '/profile/complete/:section';
   static const String documents = '/profile/documents';
   static const String goals = '/profile/goals';
   static const String settings = '/profile/settings';

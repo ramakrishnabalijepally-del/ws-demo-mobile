@@ -6,14 +6,19 @@
 /// failure mode `.agents/rules/05-reuse-and-skills.md` exists to prevent.
 library;
 
+export 'widgets/ws_agent_mark.dart';
 export 'widgets/ws_buttons.dart';
 export 'widgets/ws_conversation.dart';
 export 'widgets/ws_feedback.dart';
 export 'widgets/ws_forms.dart';
+export 'widgets/ws_globe.dart';
 export 'widgets/ws_hero_image.dart';
+export 'widgets/ws_profile_button.dart';
 export 'widgets/ws_progress.dart';
+export 'widgets/ws_province_mark.dart';
+export 'widgets/ws_rise_in.dart';
 export 'widgets/ws_score_card.dart';
 export 'widgets/ws_surfaces.dart';
-export 'widgets/ws_theme_toggle.dart';
+export 'widgets/ws_sync_note.dart';
 export 'widgets/ws_verdict_chip.dart';
 export 'widgets/ws_wordmark.dart';

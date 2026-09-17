@@ -37,6 +37,10 @@ class JobCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (job.isNew) ...[
+                      const WsBadge.fresh(),
+                      const SizedBox(height: WsSpacing.xs),
+                    ],
                     Text(
                       job.title,
                       style: context.text.titleMedium,
@@ -58,13 +62,22 @@ class JobCard extends ConsumerWidget {
                 tooltip: job.saved ? 'Remove from saved' : 'Save this job',
                 onPressed: () =>
                     ref.read(savedJobIdsProvider.notifier).toggle(job.id),
-                icon: Icon(
-                  job.saved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  color: job.saved
-                      ? context.colors.primary
-                      : context.ws.placeholder,
+                // The bookmark pops as it fills, so saving is acknowledged
+                // without a snackbar.
+                icon: AnimatedSwitcher(
+                  duration: WsMotion.duration(context, WsMotion.medium),
+                  switchInCurve: Curves.easeOutBack,
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: Icon(
+                    job.saved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    key: ValueKey(job.saved),
+                    color: job.saved
+                        ? context.colors.primary
+                        : context.ws.placeholder,
+                  ),
                 ),
               ),
             ],
@@ -79,7 +92,7 @@ class JobCard extends ConsumerWidget {
                 job.salaryRange,
                 style: context.text.titleMedium,
               ),
-              _Meta(label: job.employment.label),
+              _Meta(label: job.typeLabel),
               _Meta(label: 'NOC ${job.nocCode}'),
               if (job.permitFriendly)
                 // The one badge that earns its place on a job row: it is the
