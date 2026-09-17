@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Needed to publish the APK onto a GitHub Release.
+permissions:
+  contents: write
+
+concurrency:
+  group: "apk"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Release build. The app signs with the debug key (see
+      # android/app/build.gradle.kts): this is a demo build meant to be
+      # side-loaded, not a Play Store upload, so there is no keystore secret
+      # to manage. Android will warn the installer that the developer is
+      # unverified, which is expected.
+      - run: flutter build apk --release
+
+      # One universal APK rather than per-ABI splits, so the client has a
+      # single file that installs on any phone.
+      - name: Give the APK a human name
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/worksettle-demo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worksettle-demo-apk
+          path: dist/worksettle-demo.apk
+
+      # A rolling release under a fixed tag, so the download link never
+      # changes as the demo is rebuilt.
+      - name: Publish to the rolling demo release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create demo-latest \
+            --title "WorkSettle — demo APK" \
+            --notes "Latest Android build of the WorkSettle mock demo. Install on an Android phone and allow installation from unknown sources when prompted. Rebuilt automatically from \`main\`." \
+            || echo "release already exists, updating it"
+          gh release upload demo-latest dist/worksettle-demo.apk --clobber
