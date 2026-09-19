@@ -72,7 +72,6 @@ void main() {
     // Immigration
     'Immigration': ImmigrationScreen.new,
     'CRS overview': CrsOverviewScreen.new,
-    'CRS calculator': CrsCalculatorScreen.new,
     'CRS result': CrsResultScreen.new,
     'CRS breakdown': CrsBreakdownScreen.new,
     'PNP provinces': PnpProvincesScreen.new,
@@ -94,13 +93,19 @@ void main() {
     'Resources': ResourcesScreen.new,
 
     // Assistant
-    'Assistant': AssistantScreen.new,
+    'AI Agent': AiAgentScreen.new,
+    'Assistant chat': AssistantScreen.new,
     'Voice mode': VoiceModeScreen.new,
     'Saved conversations': SavedConversationsScreen.new,
 
     // Profile
     'Profile': ProfileScreen.new,
     'Profile edit': ProfileEditScreen.new,
+    'Profile completion': ProfileCompletionScreen.new,
+    'Profile section — about you': () =>
+        const ProfileSectionScreen(sectionId: 'aboutYou'),
+    'Profile section — language': () =>
+        const ProfileSectionScreen(sectionId: 'language'),
     'Settings': SettingsScreen.new,
     'Notification settings': NotificationSettingsScreen.new,
     'Security settings': SecuritySettingsScreen.new,

@@ -6,9 +6,8 @@ library;
 
 export 'completion/presentation/screens/profile_completion_screen.dart';
 export 'completion/presentation/screens/profile_section_screen.dart';
+export 'completion/presentation/screens/provincial_ties_screen.dart';
 export 'help/presentation/screens/help_screens.dart';
 export 'overview/presentation/screens/profile_edit_screen.dart';
 export 'overview/presentation/screens/profile_screen.dart';
 export 'settings/presentation/screens/settings_screens.dart';
-export 'completion/presentation/widgets/additional_factors_sheet.dart'
-    show showAdditionalFactorsSheet;

@@ -73,6 +73,70 @@ class ChoiceGroup<T> extends StatelessWidget {
   }
 }
 
+/// Several answers from a list, on check cards. Null is unanswered; an empty
+/// set is the [noneLabel] answer, which clears the others.
+class MultiChoiceGroup<T> extends StatelessWidget {
+  const MultiChoiceGroup({
+    required this.question,
+    required this.options,
+    required this.labelOf,
+    required this.selected,
+    required this.onChanged,
+    this.helper,
+    this.noneLabel,
+    super.key,
+  });
+
+  final String question;
+  final String? helper;
+  final List<T> options;
+  final String Function(T option) labelOf;
+  final Set<T>? selected;
+  final ValueChanged<Set<T>> onChanged;
+
+  /// The "none of these" card. Omit it when some answer is always true.
+  final String? noneLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = selected ?? <T>{};
+    final noneLabel = this.noneLabel;
+    final noneChosen = selected != null && chosen.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        QuestionLabel(question: question, helper: helper),
+        const SizedBox(height: WsSpacing.md),
+        for (final option in options)
+          Padding(
+            padding: const EdgeInsets.only(bottom: WsSpacing.sm),
+            child: WsSelectionCard(
+              selected: chosen.contains(option),
+              semanticLabel: labelOf(option),
+              onTap: () => onChanged(
+                chosen.contains(option)
+                    ? ({...chosen}..remove(option))
+                    : {...chosen, option},
+              ),
+              child: _FamilyOption(
+                label: labelOf(option),
+                selected: chosen.contains(option),
+              ),
+            ),
+          ),
+        if (noneLabel != null)
+          WsSelectionCard(
+            selected: noneChosen,
+            semanticLabel: noneLabel,
+            onTap: () => onChanged(<T>{}),
+            child: _FamilyOption(label: noneLabel, selected: noneChosen),
+          ),
+      ],
+    );
+  }
+}
+
 /// A yes-or-no question as two selection cards. Null means unanswered.
 class YesNoQuestion extends StatelessWidget {
   const YesNoQuestion({
@@ -204,7 +268,7 @@ class YearsStepper extends StatelessWidget {
 
 /// Close family in Canada: brother, sister, parents, or none of them.
 ///
-/// Asked in the CRS additional factors and in the immigration profile, and
+/// Asked in its own profile section and in Edit profile's immigration tab, and
 /// saved to the same answer, so whichever the candidate fills in, the other
 /// already shows it. Null means unanswered; an empty set is none.
 class FamilyInCanadaQuestion extends StatelessWidget {

@@ -17,12 +17,16 @@ import 'crs_calculator.dart';
 ///   of 110, with a pass mark of 60.
 /// - **Manitoba** — MPNP Skilled Worker Expression of Interest, out of 1,000.
 ///
-/// Grids as published by each province and checked September 2026.
+/// Grids checked September 2026 against each province's published grid (the
+/// AAIP grid as revised 29 January 2025).
 ///
-/// **What the profile cannot answer is scored as zero and listed in
-/// [PnpScore.notCounted]**: a job offer and its wage and location, a relative
-/// living in that province, and a provincial licence. The score is therefore a
-/// floor, and every card says so rather than implying it is complete.
+/// Family, work and study in a province and a job offer are asked on the PNP
+/// status screen ([ProvincialFactors]) and scored below.
+///
+/// **What is still not asked is scored as zero and listed in
+/// [PnpScore.notCounted]** — sector endorsements, regional bonuses, a friend
+/// in Manitoba. The score is therefore a floor, and every card says so rather
+/// than implying it is complete.
 // TODO(backend): grids change. The real rules come from the versioned rules
 // service, with their effective date, not from constants in the app.
 
@@ -70,15 +74,66 @@ List<PnpScore> calculatePnpScores(Candidate candidate, {DateTime? today}) {
   final languages = _Languages.of(p);
   final workYears = (p.canadianWorkYears ?? 0) + (p.foreignWorkYears ?? 0);
   final hasWork = p.canadianWorkYears != null || p.foreignWorkYears != null;
-  final province = candidate.province;
+  final ties = _Ties.of(p);
 
   return [
-    _alberta(p, age, languages, workYears, hasWork, province),
-    _britishColumbia(p, languages, workYears, province),
-    _saskatchewan(p, age, languages, workYears),
-    _manitoba(p, age, languages, workYears, province),
+    _alberta(p, age, languages, workYears, hasWork, ties),
+    _britishColumbia(p, languages, workYears, ties),
+    _saskatchewan(p, age, languages, workYears, ties),
+    _manitoba(p, age, languages, workYears, ties),
   ];
 }
+
+/// The provincial answers, with unanswered sets read as empty and study
+/// dropped when the profile has no Canadian post-secondary education.
+class _Ties {
+  const _Ties({
+    required this.f,
+    required this.family,
+    required this.immediate,
+    required this.worked,
+    required this.studied,
+    required this.canadianStudy,
+  });
+
+  factory _Ties.of(CrsProfile p) {
+    final f = p.provincial;
+    final immediate = f.immediateFamily ?? const <ProvinceTie>{};
+    return _Ties(
+      f: f,
+      immediate: immediate,
+      family: {...immediate, ...?f.extendedFamily},
+      worked: f.workedIn ?? const {},
+      studied: p.studiedInCanada ? f.studiedIn ?? const {} : const {},
+      canadianStudy: p.studiedInCanada,
+    );
+  }
+
+  final ProvincialFactors f;
+
+  /// Immediate and extended family together — Saskatchewan and Manitoba.
+  final Set<ProvinceTie> family;
+
+  /// Parent, sibling or child only — Alberta.
+  final Set<ProvinceTie> immediate;
+  final Set<ProvinceTie> worked;
+  final Set<ProvinceTie> studied;
+  final bool canadianStudy;
+
+  bool offerIn(ProvinceTie province) => f.jobOffer == province;
+
+  /// Anywhere in Canada other than [province].
+  static bool _outside(Set<ProvinceTie> set, ProvinceTie province) =>
+      set.any((tie) => tie != province && tie != ProvinceTie.none);
+
+  bool workedOutside(ProvinceTie province) => _outside(worked, province);
+  bool studiedOutside(ProvinceTie province) => _outside(studied, province);
+}
+
+/// A Canadian certificate of qualification in a trade scores as its own
+/// education level on three grids; the better of the two counts.
+int _withTrade(CrsProfile p, int level, int trade) =>
+    math.max(level, p.certificateOfQualification == true ? trade : 0);
 
 /// The stronger of the two official languages is scored as the first, as
 /// every one of these grids does.
@@ -117,32 +172,47 @@ PnpScore _alberta(
   _Languages lang,
   int workYears,
   bool hasWork,
-  String province,
+  _Ties t,
 ) {
-  final education = switch (p.education) {
-    EducationLevel.doctoral => 12,
-    EducationLevel.masters => 10,
-    EducationLevel.bachelors ||
-    EducationLevel.twoOrMore ||
-    EducationLevel.twoYear =>
-      7,
-    EducationLevel.oneYear => 4,
-    _ => p.certificateOfQualification == true ? 7 : 0,
-  };
-  final inAlberta = province == 'Alberta';
-  final canadianStudy = switch (p.canadianEducation) {
-    null || CanadianEducation.none => 0,
-    _ => inAlberta ? 10 : 6,
-  };
-  final language = switch (lang.first) {
+  final education = _withTrade(
+    p,
+    switch (p.education) {
+      EducationLevel.doctoral => 12,
+      EducationLevel.masters => 10,
+      EducationLevel.bachelors ||
+      EducationLevel.twoOrMore ||
+      EducationLevel.twoYear =>
+        7,
+      EducationLevel.oneYear => 4,
+      _ => 0,
+    },
+    7,
+  );
+  final studyPlace =
+      t.studied.contains(ProvinceTie.alberta) ? 10 : (t.canadianStudy ? 6 : 0);
+
+  // Alberta scores French lower than English at every level.
+  int? lowest(LanguageResult? result) =>
+      result == null ? null : clbFor(result).all.reduce(math.min);
+  final english = switch (lowest(p.englishTest)) {
     null => 0,
     >= 6 => 10,
     5 => 8,
     4 => 5,
     _ => 0,
   };
-  final canadianWork =
-      (p.canadianWorkYears ?? 0) >= 1 ? (inAlberta ? 10 : 6) : 0;
+  final french = switch (lowest(p.frenchTest)) {
+    null => 0,
+    >= 6 => 8,
+    5 => 5,
+    4 => 3,
+    _ => 0,
+  };
+
+  final workPlace = t.worked.contains(ProvinceTie.alberta)
+      ? 10
+      : (t.worked.isNotEmpty || (p.canadianWorkYears ?? 0) >= 1 ? 6 : 0);
+  final offer = t.offerIn(ProvinceTie.alberta);
 
   return PnpScore(
     code: 'AB',
@@ -150,11 +220,15 @@ PnpScore _alberta(
     program: 'AAIP Worker EOI',
     maximum: 100,
     lines: [
-      PnpLine('Education', education + canadianStudy, 22),
-      PnpLine('Language', language + (lang.bilingualAt4 ? 3 : 0), 13),
+      PnpLine('Education', education + studyPlace, 22),
+      PnpLine(
+        'Language',
+        math.max(english, french) + (lang.bilingualAt4 ? 3 : 0),
+        13,
+      ),
       PnpLine(
         'Work experience',
-        (!hasWork ? 0 : (workYears >= 1 ? 11 : 3)) + canadianWork,
+        (!hasWork ? 0 : (workYears >= 1 ? 11 : 3)) + workPlace,
         21,
       ),
       PnpLine(
@@ -169,12 +243,26 @@ PnpScore _alberta(
         },
         5,
       ),
-      const PnpLine('Family in Alberta', 0, 8),
-      const PnpLine('Alberta job offer', 0, 31),
+      // Since 29 January 2025, a parent, sibling or child only.
+      PnpLine(
+        'Family in Alberta',
+        t.immediate.contains(ProvinceTie.alberta) ? 8 : 0,
+        8,
+      ),
+      PnpLine('Alberta job offer', offer ? 10 : 0, 16),
+      PnpLine(
+        'Job outside Calgary and Edmonton',
+        offer && t.f.albertaJobOutsideCities == true ? 5 : 0,
+        5,
+      ),
+      PnpLine(
+        'Regulated occupation or designated trade',
+        offer && t.f.albertaJobRegulated == true ? 10 : 0,
+        10,
+      ),
     ],
     notCounted: const [
-      'A family member living in Alberta',
-      'An Alberta job offer, its location and any licence it needs',
+      'A Rural Renewal, tourism or law-enforcement endorsement (+6)',
     ],
   );
 }
@@ -183,16 +271,18 @@ PnpScore _britishColumbia(
   CrsProfile p,
   _Languages lang,
   int workYears,
-  String province,
+  _Ties t,
 ) {
+  // Whole years only, so under a year reads as none: a floor, not a guess.
   final experience = switch (workYears) {
     >= 5 => 20,
     4 => 16,
     3 => 12,
     2 => 8,
     1 => 4,
-    _ => 1,
+    _ => 0,
   };
+  final offer = t.offerIn(ProvinceTie.britishColumbia);
   final education = switch (p.education) {
     EducationLevel.doctoral => 27,
     EducationLevel.masters => 22,
@@ -200,10 +290,9 @@ PnpScore _britishColumbia(
     EducationLevel.twoYear || EducationLevel.oneYear => 5,
     _ => 0,
   };
-  final canadianStudy = switch (p.canadianEducation) {
-    null || CanadianEducation.none => 0,
-    _ => province == 'British Columbia' ? 8 : 6,
-  };
+  final studyPlace = t.studied.contains(ProvinceTie.britishColumbia)
+      ? 8
+      : (t.canadianStudy ? 6 : 0);
   final language = switch (lang.first) {
     null => 0,
     >= 9 => 30,
@@ -214,6 +303,17 @@ PnpScore _britishColumbia(
     4 => 5,
     _ => 0,
   };
+  // One point per dollar from $16, up to 55 at $70 and above.
+  final wage = t.f.bcHourlyWage;
+  final wagePoints =
+      offer && wage != null ? (wage.floor() - 15).clamp(0, 55) : 0;
+  final area = !offer
+      ? 0
+      : switch (t.f.bcArea) {
+          BcArea.area2 => 5,
+          BcArea.elsewhere => 15,
+          _ => 0,
+        };
 
   return PnpScore(
     code: 'BC',
@@ -223,24 +323,28 @@ PnpScore _britishColumbia(
     lines: [
       PnpLine(
         'Work experience',
-        experience + ((p.canadianWorkYears ?? 0) >= 1 ? 10 : 0),
+        experience +
+            ((p.canadianWorkYears ?? 0) >= 1 ? 10 : 0) +
+            (offer && t.f.workingForEmployer == true ? 10 : 0),
         40,
       ),
       PnpLine(
         'Education',
-        education +
-            canadianStudy +
-            (p.certificateOfQualification == true ? 5 : 0),
+        math.min(
+          40,
+          education +
+              studyPlace +
+              (p.certificateOfQualification == true ? 5 : 0),
+        ),
         40,
       ),
       PnpLine('Language', language + (lang.bilingualAt4 ? 10 : 0), 40),
-      const PnpLine('Wage of the job offer', 0, 55),
-      const PnpLine('Area of employment', 0, 25),
+      PnpLine('Wage of the job offer', wagePoints, 55),
+      PnpLine('Area of employment', area, 25),
     ],
     notCounted: const [
-      'A BC job offer and its hourly wage',
-      'Where in BC the job is',
-      'Currently working in BC for that employer',
+      'Regional experience or alumni status outside Metro Vancouver (+10)',
+      'Whether your work experience is directly related to the job offer',
     ],
   );
 }
@@ -250,14 +354,19 @@ PnpScore _saskatchewan(
   int? age,
   _Languages lang,
   int workYears,
+  _Ties t,
 ) {
-  final education = switch (p.education) {
-    EducationLevel.doctoral || EducationLevel.masters => 23,
-    EducationLevel.bachelors || EducationLevel.twoOrMore => 20,
-    EducationLevel.twoYear => 15,
-    EducationLevel.oneYear => 12,
-    _ => p.certificateOfQualification == true ? 20 : 0,
-  };
+  final education = _withTrade(
+    p,
+    switch (p.education) {
+      EducationLevel.doctoral || EducationLevel.masters => 23,
+      EducationLevel.bachelors || EducationLevel.twoOrMore => 20,
+      EducationLevel.twoYear => 15,
+      EducationLevel.oneYear => 12,
+      _ => 0,
+    },
+    20,
+  );
   // The profile records the last 10 years as one number, so the most recent
   // five are filled first and anything beyond counts as six to ten years ago.
   final recent = math.min(workYears, 5);
@@ -307,12 +416,25 @@ PnpScore _saskatchewan(
         },
         12,
       ),
-      const PnpLine('Connection to Saskatchewan', 0, 30),
+      // Job offer 30, close relative 20, a year of work 5, a year of study 5
+      // — capped at 30 together.
+      PnpLine(
+        'Connection to Saskatchewan',
+        math.min(
+          30,
+          (t.offerIn(ProvinceTie.saskatchewan) ? 30 : 0) +
+              (t.family.contains(ProvinceTie.saskatchewan) ? 20 : 0) +
+              (t.worked.contains(ProvinceTie.saskatchewan) &&
+                      t.f.saskatchewanWorkYear == true
+                  ? 5
+                  : 0) +
+              (t.studied.contains(ProvinceTie.saskatchewan) ? 5 : 0),
+        ),
+        30,
+      ),
     ],
     notCounted: const [
-      'A Saskatchewan job offer',
-      'A close relative living in Saskatchewan',
-      'Past work or study in Saskatchewan',
+      'A job offer counts only with a SINP Job Approval Letter',
     ],
   );
 }
@@ -322,7 +444,7 @@ PnpScore _manitoba(
   int? age,
   _Languages lang,
   int workYears,
-  String province,
+  _Ties t,
 ) {
   final levels = _Languages.firstLevels(p);
   final firstLanguage = levels == null
@@ -340,24 +462,35 @@ PnpScore _manitoba(
                 _ => 0,
               },
         );
-  final education = switch (p.education) {
-    EducationLevel.doctoral || EducationLevel.masters => 125,
-    EducationLevel.twoOrMore => 115,
-    EducationLevel.bachelors => 110,
-    EducationLevel.twoYear => 100,
-    EducationLevel.oneYear => 70,
-    _ => p.certificateOfQualification == true ? 70 : 0,
-  };
-  final inManitoba = province == 'Manitoba';
-  // Manitoba's risk factor: Canadian work or study in another province
-  // suggests the candidate may not stay.
-  final risk = inManitoba
-      ? 0
-      : ((p.canadianWorkYears ?? 0) >= 1 ? -100 : 0) +
-          (switch (p.canadianEducation) {
-            null || CanadianEducation.none => 0,
-            _ => -100,
-          });
+  final education = _withTrade(
+    p,
+    switch (p.education) {
+      EducationLevel.doctoral || EducationLevel.masters => 125,
+      EducationLevel.twoOrMore => 115,
+      EducationLevel.bachelors => 110,
+      EducationLevel.twoYear => 100,
+      EducationLevel.oneYear => 70,
+      _ => 0,
+    },
+    70,
+  );
+  // Close relative 200, six months' work 100, study 100 (two years or more)
+  // or 50, and 500 for six months with a Manitoba employer offering a job.
+  final adaptability = math.min(
+    500,
+    (t.family.contains(ProvinceTie.manitoba) ? 200 : 0) +
+        (t.worked.contains(ProvinceTie.manitoba) ? 100 : 0) +
+        (t.studied.contains(ProvinceTie.manitoba)
+            ? (t.f.manitobaStudyTwoYears == true ? 100 : 50)
+            : 0) +
+        (t.offerIn(ProvinceTie.manitoba) && t.f.workingForEmployer == true
+            ? 500
+            : 0),
+  );
+  // Work or study in another province suggests the candidate may not stay.
+  // Each counts on its own, even alongside Manitoba ties.
+  final risk = (t.workedOutside(ProvinceTie.manitoba) ? -100 : 0) +
+      (t.studiedOutside(ProvinceTie.manitoba) ? -100 : 0);
 
   return PnpScore(
     code: 'MB',
@@ -399,14 +532,14 @@ PnpScore _manitoba(
         175,
       ),
       PnpLine('Education', education, 125),
-      const PnpLine('Adaptability', 0, 500),
-      if (risk != 0)
-        PnpLine('Canadian work or study outside Manitoba', risk, 0),
+      PnpLine('Adaptability', adaptability, 500),
+      if (risk != 0) PnpLine('Work or study in another province', risk, 0),
     ],
     notCounted: const [
-      'A close relative or friend in Manitoba',
-      'Past work, study or a job offer in Manitoba',
-      'A Manitoba licence for your occupation',
+      'A close friend or distant relative in Manitoba (+50)',
+      'Settling outside Winnipeg (+50)',
+      'A strategic recruitment invitation (+500)',
+      'Work experience recognised by a Manitoba licensing body',
     ],
   );
 }

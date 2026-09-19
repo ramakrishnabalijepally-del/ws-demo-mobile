@@ -372,7 +372,13 @@ class WsScorePrompt extends StatelessWidget {
           ),
           if (actionLabel != null && onPressed != null) ...[
             const SizedBox(height: WsSpacing.lg),
-            WsPrimaryButton(label: actionLabel, onPressed: onPressed),
+            // The arrow means this moves you forward: the score slot's
+            // action always takes the reader somewhere to produce it.
+            WsPrimaryButton(
+              label: actionLabel,
+              onPressed: onPressed,
+              forward: true,
+            ),
           ],
           if (note != null) ...[
             const SizedBox(height: WsSpacing.md),

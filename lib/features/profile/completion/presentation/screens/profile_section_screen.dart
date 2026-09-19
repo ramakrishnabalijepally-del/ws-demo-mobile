@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../app/theme/theme.dart';
+import '../../../../../shared/controllers/crs_controller.dart';
 import '../../../../../shared/data/mock_candidate.dart';
 import '../../../../../shared/models/crs_profile.dart';
 import '../../../../../shared/models/profile_section.dart';
@@ -12,11 +13,11 @@ import '../widgets/section_forms.dart';
 
 /// One profile section's form.
 ///
-/// Answers are held as a draft until Save, and the bar at the bottom shows the
-/// CRS score those answers would give — so the reader sees what each answer is
-/// worth before committing it.
+/// Answers are held as a draft until Save. Once the CRS score has been asked
+/// for, the bar at the bottom shows the score those answers would give — so
+/// the reader sees what each answer is worth before committing it.
 ///
-/// **The same screen serves the profile and the CRS Predictor.** Both write to
+/// **The same screen serves the profile and the CRS status screen.** Both write to
 /// the one candidate profile, and the score is calculated from it, so an answer
 /// given in either place is already in the other. Only the wording changes, to
 /// say where the answers are going.
@@ -81,14 +82,19 @@ class _ProfileSectionScreenState extends ConsumerState<ProfileSectionScreen> {
     ref.read(candidateProvider.notifier).update(next);
 
     final score = calculateCrs(next.crs, age: _ageFrom(next.dateOfBirth)).total;
+    // The number is only named once it has been asked for; before that, a
+    // save would hand the reader the score without the question.
+    final revealed = ref.read(crsRevealedProvider);
     final messenger = ScaffoldMessenger.of(context);
     context.pop();
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          widget.fromCrs
-              ? 'Saved to your profile. Your CRS score is $score.'
-              : 'Saved. Your CRS score in Immigration is now $score.',
+          !revealed
+              ? 'Saved to your profile.'
+              : widget.fromCrs
+                  ? 'Saved to your profile. Your CRS score is $score.'
+                  : 'Saved. Your CRS score in Immigration is now $score.',
         ),
       ),
     );
@@ -154,6 +160,7 @@ class _ProfileSectionScreenState extends ConsumerState<ProfileSectionScreen> {
         ],
       ),
       bottomNavigationBar: _SaveBar(
+        showScore: ref.watch(crsRevealedProvider),
         before: calculateCrs(candidate.crs, age: savedAge).total,
         after: calculateCrs(_draft, age: draftAge).total,
         onSave: _save,
@@ -164,11 +171,15 @@ class _ProfileSectionScreenState extends ConsumerState<ProfileSectionScreen> {
 
 class _SaveBar extends StatelessWidget {
   const _SaveBar({
+    required this.showScore,
     required this.before,
     required this.after,
     required this.onSave,
   });
 
+  /// False until the CRS score has been asked for: the bar is then only the
+  /// Save button, with no number in it.
+  final bool showScore;
   final int before;
   final int after;
   final VoidCallback onSave;
@@ -195,43 +206,45 @@ class _SaveBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'CRS score with these answers',
-                          style: context.text.bodySmall
-                              ?.copyWith(color: context.ws.caption),
-                        ),
-                        Semantics(
-                          label: '$after',
-                          liveRegion: true,
-                          excludeSemantics: true,
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(
-                              begin: before.toDouble(),
-                              end: after.toDouble(),
-                            ),
-                            duration:
-                                WsMotion.duration(context, WsMotion.focal),
-                            curve: WsMotion.entrance,
-                            builder: (context, value, _) => Text(
-                              '${value.round()}',
-                              style: context.text.displaySmall,
+              if (showScore) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'CRS score with these answers',
+                            style: context.text.bodySmall
+                                ?.copyWith(color: context.ws.caption),
+                          ),
+                          Semantics(
+                            label: '$after',
+                            liveRegion: true,
+                            excludeSemantics: true,
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(
+                                begin: before.toDouble(),
+                                end: after.toDouble(),
+                              ),
+                              duration:
+                                  WsMotion.duration(context, WsMotion.focal),
+                              curve: WsMotion.entrance,
+                              builder: (context, value, _) => Text(
+                                '${value.round()}',
+                                style: context.text.displaySmall,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (delta != 0) _Delta(delta: delta),
-                ],
-              ),
-              const SizedBox(height: WsSpacing.md),
+                    if (delta != 0) _Delta(delta: delta),
+                  ],
+                ),
+                const SizedBox(height: WsSpacing.md),
+              ],
               WsPrimaryButton(label: 'Save', forward: false, onPressed: onSave),
             ],
           ),

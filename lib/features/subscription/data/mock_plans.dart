@@ -45,7 +45,7 @@ const List<Plan> mockPlans = [
     blurb: 'The AI tools, for people actually applying.',
     features: [
       'Everything in Free',
-      'CRS Predictor and score breakdown',
+      'CRS score and breakdown',
       'Provincial and federal eligibility',
       'AI chat and voice assistant',
       'Smart Checklist',
@@ -83,7 +83,7 @@ const List<({String feature, bool free, bool pro, bool proPlus})>
     proPlus: true
   ),
   (feature: 'Employer messaging', free: true, pro: true, proPlus: true),
-  (feature: 'CRS Predictor', free: false, pro: true, proPlus: true),
+  (feature: 'CRS score', free: false, pro: true, proPlus: true),
   (feature: 'Score breakdown', free: false, pro: true, proPlus: true),
   (feature: 'Provincial eligibility', free: false, pro: true, proPlus: true),
   (feature: 'Federal program matching', free: false, pro: true, proPlus: true),

@@ -27,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
   final _first = TextEditingController();
   final _last = TextEditingController();
+  final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -37,6 +38,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   );
 
   bool _obscure = true;
+  String? _emailError;
   String? _passwordError;
   String? _confirmError;
 
@@ -54,6 +56,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   void dispose() {
     _first.dispose();
     _last.dispose();
+    _email.dispose();
     _phone.dispose();
     _password.dispose();
     _confirm.dispose();
@@ -62,7 +65,13 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   void _submit() {
+    final email = _email.text.trim();
     setState(() {
+      _emailError = email.isEmpty
+          ? 'Enter the email address WorkSettle should write to'
+          : (email.contains('@') && email.contains('.')
+              ? null
+              : 'Enter a complete email address, like name@example.com');
       _passwordError = _password.text.length < 6
           ? 'Choose a password of at least 6 characters'
           : null;
@@ -71,7 +80,9 @@ class _SignUpScreenState extends State<SignUpScreen>
           : 'Both password fields need to match. Re-type it to confirm';
     });
 
-    if (_passwordError == null && _confirmError == null) {
+    if (_emailError == null &&
+        _passwordError == null &&
+        _confirmError == null) {
       context.go(Routes.registration);
     }
   }
@@ -84,10 +95,12 @@ class _SignUpScreenState extends State<SignUpScreen>
       child: _SignUpForm(
         first: _first,
         last: _last,
+        email: _email,
         phone: _phone,
         password: _password,
         confirm: _confirm,
         obscure: _obscure,
+        emailError: _emailError,
         passwordError: _passwordError,
         confirmError: _confirmError,
         onToggleObscure: () => setState(() => _obscure = !_obscure),
@@ -101,10 +114,12 @@ class _SignUpForm extends StatelessWidget {
   const _SignUpForm({
     required this.first,
     required this.last,
+    required this.email,
     required this.phone,
     required this.password,
     required this.confirm,
     required this.obscure,
+    required this.emailError,
     required this.passwordError,
     required this.confirmError,
     required this.onToggleObscure,
@@ -113,10 +128,12 @@ class _SignUpForm extends StatelessWidget {
 
   final TextEditingController first;
   final TextEditingController last;
+  final TextEditingController email;
   final TextEditingController phone;
   final TextEditingController password;
   final TextEditingController confirm;
   final bool obscure;
+  final String? emailError;
   final String? passwordError;
   final String? confirmError;
   final VoidCallback onToggleObscure;
@@ -149,6 +166,16 @@ class _SignUpForm extends StatelessWidget {
           controller: last,
           hint: 'Smith',
           leadingIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: WsSpacing.xl),
+        WsField(
+          label: 'Email',
+          required: true,
+          controller: email,
+          hint: 'name@example.com',
+          error: emailError,
+          keyboardType: TextInputType.emailAddress,
+          leadingIcon: Icons.mail_outline_rounded,
         ),
         const SizedBox(height: WsSpacing.xl),
         WsPhoneField(

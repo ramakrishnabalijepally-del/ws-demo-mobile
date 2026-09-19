@@ -32,7 +32,7 @@ enum WsModule {
     icon: Icons.verified_user_rounded,
   ),
   crsPredictor(
-    label: 'CRS Predictor',
+    label: 'CRS score',
     blurb: 'Score estimate against recent draws',
     icon: Icons.speed_rounded,
   ),

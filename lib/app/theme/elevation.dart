@@ -107,13 +107,12 @@ abstract final class WsMotion {
   /// one moment the brand introduces itself.
   static const Duration splashSequence = Duration(milliseconds: 3000);
 
-  /// How long the splash stays on screen before it hands over to onboarding.
+  /// How long the splash stays on screen before it hands over.
   ///
   /// Long by the standards of a splash, and deliberately so: the globe is the
   /// product's own story — people arriving in Canada from around the world —
-  /// and it takes about this long for every route to have flown at least once.
-  /// Cutting it short would mean nobody ever sees the journey they came for.
-  static const Duration splashDwell = Duration(seconds: 10);
+  /// and the sequence needs room to be seen rather than glimpsed.
+  static const Duration splashDwell = Duration(seconds: 6);
 
   /// How long the splash holds when reduced motion skips the sequence.
   static const Duration splashHold = Duration(milliseconds: 1200);

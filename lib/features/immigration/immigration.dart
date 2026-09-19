@@ -9,6 +9,7 @@
 /// as well as here, so it cannot belong to one feature.
 library;
 
+export 'controllers/pnp_status.dart' show pnpRevealedProvider;
 export 'controllers/stream_matches.dart';
 export 'crs/presentation/screens/crs_screens.dart';
 export 'data/mock_immigration.dart'
@@ -21,4 +22,5 @@ export 'data/mock_immigration.dart'
         mockRecentDraws;
 export 'hub/presentation/screens/immigration_screen.dart';
 export 'pnp/presentation/screens/pnp_screens.dart';
+export 'pnp/presentation/screens/pnp_status_screen.dart';
 export 'crs/presentation/screens/crs_calculating_screen.dart';

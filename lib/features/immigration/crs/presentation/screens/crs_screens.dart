@@ -5,26 +5,37 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/controllers/crs_controller.dart';
+import '../../../../../shared/models/profile_section.dart';
 import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
 import '../../../../../shared/utils/crs_calculator.dart';
-import 'crs_calculating_screen.dart';
 import '../../../data/mock_immigration.dart';
+import '../../../widgets/score_status_list.dart';
 
-/// J2 — the CRS overview.
+/// Where a section's answers are entered: the profile's own form, except the
+/// nomination, which the profile does not ask and so is asked in Immigration.
+String _formFor(ProfileSection section) => section == ProfileSection.additional
+    ? Routes.withId(Routes.crsSection, section.name)
+    : Routes.withId(Routes.profileSection, section.name);
+
+/// J2 — what the CRS score needs, and what is still missing.
 ///
-/// The score is not a separate quiz. It is calculated from the candidate's
-/// profile with IRCC's published points, so this screen shows what it is
-/// built from and where each piece is entered.
+/// Opened by "Get my CRS score". The score is calculated from the profile, so
+/// this screen shows each section as filled in or not, and every row opens
+/// the form it is answered in — the profile's own section for profile
+/// questions, and a form here for the one question the profile does not ask.
+/// It watches the profile, so a saved section moves across on the way back,
+/// and the button only works once nothing is missing.
 class CrsOverviewScreen extends ConsumerWidget {
   const CrsOverviewScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final completion = ref.watch(profileCompletionProvider);
+    final missing = completion.sections.length - completion.done.length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CRS Predictor')),
+      appBar: AppBar(title: const Text('Your CRS score')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           WsSpacing.xl,
@@ -33,66 +44,38 @@ class CrsOverviewScreen extends ConsumerWidget {
           WsSpacing.huge,
         ),
         children: [
-          const Center(
-            child: WsIconTile(
-              icon: Icons.speed_rounded,
-              size: WsTileSize.header,
-            ),
-          ),
-          const SizedBox(height: WsSpacing.xl),
           Text(
-            'Your CRS score, from your profile',
+            completion.isComplete
+                ? 'Everything is filled in'
+                : 'Fill these in to get your CRS score',
             style: context.text.headlineLarge,
           ),
           const SizedBox(height: WsSpacing.md),
           Text(
-            'The Comprehensive Ranking System is how Express Entry ranks '
-            'candidates. WorkSettle calculates yours from your profile using '
-            'the points IRCC publishes, so it updates whenever your profile '
-            'does.',
+            'WorkSettle calculates your Comprehensive Ranking System score '
+            'from your profile, using the points IRCC publishes. Anything you '
+            'save in your profile shows here straight away.',
             style: context.text.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
-          const SizedBox(height: WsSpacing.lg),
-          const WsSyncNote(
-            message: 'Linked to your profile. Answers you enter here are saved '
-                'to your profile, and changes to your profile update this '
-                'score.',
+          const SizedBox(height: WsSpacing.xxl),
+          ScoreStatusList(
+            items: [
+              for (final section in completion.sections)
+                ScoreStatusItem(
+                  title: section.title,
+                  icon: section.icon,
+                  done: completion.done.contains(section),
+                  // A nomination is not a profile question, so it is asked
+                  // here; everything else opens the profile's own section.
+                  whereToFill: section == ProfileSection.additional
+                      ? 'Asked here — not part of your profile'
+                      : 'Fill in on your profile',
+                  onTap: () => context.push(_formFor(section)),
+                ),
+            ],
           ),
           const SizedBox(height: WsSpacing.xxl),
-          Text('What it is built from', style: context.text.titleLarge),
-          const SizedBox(height: WsSpacing.md),
-          WsCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (final (i, section) in completion.sections.indexed) ...[
-                  if (i > 0)
-                    Divider(color: context.colors.outlineVariant, height: 1),
-                  WsListRow(
-                    leading: WsIconTile(icon: section.icon),
-                    title: section.title,
-                    subtitle: completion.done.contains(section)
-                        ? 'Complete'
-                        : 'Not complete yet',
-                    trailing: Icon(
-                      completion.done.contains(section)
-                          ? Icons.check_circle_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      size: WsIconSize.tick,
-                      color: completion.done.contains(section)
-                          ? context.colors.onSurface
-                          : context.ws.placeholder,
-                    ),
-                    onTap: () => context.push(
-                      Routes.withId(Routes.crsSection, section.name),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: WsSpacing.lg),
           const WsDisclaimer(),
         ],
       ),
@@ -104,10 +87,28 @@ class CrsOverviewScreen extends ConsumerWidget {
             WsSpacing.xl,
             WsSpacing.lg,
           ),
-          child: WsPrimaryButton(
-            // The one way to a score, wherever it is asked for.
-            label: 'Get my CRS score',
-            onPressed: () => getMyCrsScore(context, ref),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!completion.isComplete) ...[
+                Text(
+                  missing == 1
+                      ? 'Fill in 1 more section to get your score.'
+                      : 'Fill in $missing more sections to get your score.',
+                  textAlign: TextAlign.center,
+                  style: context.text.bodySmall
+                      ?.copyWith(color: context.ws.caption),
+                ),
+                const SizedBox(height: WsSpacing.sm),
+              ],
+              WsPrimaryButton(
+                label: 'Get my CRS score',
+                onPressed: completion.isComplete
+                    ? () => context.push('${Routes.crsCalculating}?result=true')
+                    : null,
+              ),
+            ],
           ),
         ),
       ),
@@ -118,8 +119,8 @@ class CrsOverviewScreen extends ConsumerWidget {
 /// J8 — the result, live from the profile.
 ///
 /// Pattern B fixes the order: **the number, the verdict pill, and the sentence
-/// that puts it in context.** When sections are missing the screen says the
-/// score is an estimate so far, and leads back to the profile.
+/// that puts it in context.** The score is only calculated from a complete
+/// profile (see [CrsOverviewScreen]), so there is no partial-estimate state.
 class CrsResultScreen extends ConsumerWidget {
   const CrsResultScreen({super.key});
 
@@ -134,9 +135,7 @@ class CrsResultScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final crs = ref.watch(crsResultProvider);
     final levers = ref.watch(crsLeversProvider);
-    final completion = ref.watch(profileCompletionProvider);
     final verdict = crsVerdict(crs.total);
-    final missing = completion.sections.length - completion.done.length;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Your CRS score')),
@@ -154,33 +153,16 @@ class CrsResultScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  missing == 0
-                      ? _headline(verdict.label)
-                      : 'An estimate so far',
+                  _headline(verdict.label),
                   style: context.text.titleMedium,
                 ),
                 const SizedBox(height: WsSpacing.xs),
                 Text(
-                  missing == 0
-                      ? 'Recent Express Entry draws have invited candidates '
-                          'scoring $crsDrawLow to $crsDrawHigh.'
-                      : '$missing profile '
-                          '${missing == 1 ? 'section is' : 'sections are'} '
-                          'still missing, so your score may be higher than '
-                          'this.',
+                  'Recent Express Entry draws have invited candidates '
+                  'scoring $crsDrawLow to $crsDrawHigh.',
                   style: context.text.bodySmall
                       ?.copyWith(color: context.colors.onSurfaceVariant),
                 ),
-                if (completion.next case final next?)
-                  // Straight into the next missing section, inside this tab.
-                  // Saving it updates the profile and this score together.
-                  WsLink(
-                    label: 'Fill in ${next.title}',
-                    underline: false,
-                    onPressed: () => context.push(
-                      Routes.withId(Routes.crsSection, next.name),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -240,9 +222,7 @@ class _Lever extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: WsSpacing.md),
       child: WsCard(
-        onTap: () => context.push(
-          Routes.withId(Routes.crsSection, lever.section.name),
-        ),
+        onTap: () => context.push(_formFor(lever.section)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

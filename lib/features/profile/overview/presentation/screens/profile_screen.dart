@@ -154,25 +154,14 @@ class _ProfileHeader extends StatelessWidget {
                       'Profile ${candidate.profileStrength} per cent complete',
                 ),
                 const SizedBox(height: WsSpacing.xs),
-                // Profile strength leads to the checklist, because the
-                // profile is what every score in the app is built from.
-                // A Wrap, so the link drops under the figure when a small
-                // phone or large text leaves no room beside it.
-                Wrap(
-                  spacing: WsSpacing.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      '${candidate.profileStrength}% complete',
-                      style: context.text.bodySmall
-                          ?.copyWith(color: context.ws.caption),
-                    ),
-                    WsLink(
-                      label: 'Complete profile',
-                      underline: false,
-                      onPressed: () => context.push(Routes.profileCompletion),
-                    ),
-                  ],
+                // Profile strength is a readout here and nothing more. The
+                // checklist is reached from the dashboard and from the agent's
+                // notices; a second way in from the profile header only asked
+                // the reader to decide which of two routes they had taken.
+                Text(
+                  '${candidate.profileStrength}% complete',
+                  style: context.text.bodySmall
+                      ?.copyWith(color: context.ws.caption),
                 ),
               ],
             ),
@@ -477,6 +466,8 @@ class _ImmigrationProfileTab extends ConsumerWidget {
     final crs = ref.watch(crsResultProvider);
     final verdict = crsVerdict(crs.total);
     final revealed = ref.watch(crsRevealedProvider);
+    final pnpRevealed = ref.watch(pnpRevealedProvider);
+    final pnpScores = ref.watch(pnpScoresProvider);
     final details = candidate.immigration;
     final family = candidate.crs.familyInCanada;
     final today = DateTime.now();
@@ -496,6 +487,15 @@ class _ImmigrationProfileTab extends ConsumerWidget {
           title: 'Immigration profile',
           onEdit: () => context.push('${Routes.profileEdit}?tab=immigration'),
         ),
+        const SizedBox(height: WsSpacing.md),
+        // The order the reader is asked to think in: who you are, what you
+        // have done, then the documents and the people behind it. The CRS
+        // answers and the immigration facts are one list, not two.
+        _AboutYouCard(candidate: candidate),
+        const SizedBox(height: WsSpacing.md),
+        _EducationCard(crs: candidate.crs),
+        const SizedBox(height: WsSpacing.md),
+        _WorkCard(crs: candidate.crs),
         const SizedBox(height: WsSpacing.md),
         _FactCard(
           icon: Icons.badge_outlined,
@@ -517,6 +517,8 @@ class _ImmigrationProfileTab extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: WsSpacing.md),
+        _LanguageCard(crs: candidate.crs),
         const SizedBox(height: WsSpacing.md),
         _FactCard(
           icon: Icons.assignment_ind_outlined,
@@ -557,18 +559,33 @@ class _ImmigrationProfileTab extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: WsSpacing.md),
-        // The answers carry straight on from the facts above — passport,
-        // status and family, then about you, education, language tests and
-        // work. They are one list of what the reader has told WorkSettle, so
-        // nothing is allowed to interrupt it.
-        _CrsAnswerCards(candidate: candidate),
+        if (ProfileSection.spouse.appliesTo(candidate.crs)) ...[
+          const SizedBox(height: WsSpacing.md),
+          _SpouseCard(crs: candidate.crs),
+        ],
         const SizedBox(height: WsSpacing.xxl),
         // The total comes after the answers it is made of, not before them:
-        // the reader sees what they have given, then what it adds up to.
-        Text('CRS score', style: context.text.titleLarge),
+        // the reader sees what they have given, then what it adds up to. It
+        // sits under Federal programs, as on the Immigration tab, because the
+        // CRS is how Express Entry ranks candidates.
+        const _ProgramGroupHeading(
+          eyebrow: 'Express Entry',
+          title: 'Federal programs',
+          body: 'Scored on the Comprehensive Ranking System (CRS).',
+        ),
+        const SizedBox(height: WsSpacing.lg),
+        Text('CRS score', style: context.text.titleMedium),
         const SizedBox(height: WsSpacing.md),
-        // Same card shell either way, so nothing jumps when the score arrives.
+        // Two states, and the difference between them is the whole point.
+        //
+        // Before there is a score, the slot's job is to answer "where do I get
+        // this?" — so it says where the number is worked out and carries the
+        // button that takes the reader there. Saying only that it happens in
+        // Immigration, with nothing to press, left people hunting for it.
+        //
+        // Once there is a score, the slot is a readout and nothing more: the
+        // answers behind it are already on this tab, so there is nowhere left
+        // to send anyone and the card carries no tap target at all.
         if (revealed)
           WsScoreCard(
             icon: WsModule.crsPredictor.icon,
@@ -587,13 +604,17 @@ class _ImmigrationProfileTab extends ConsumerWidget {
             icon: WsModule.crsPredictor.icon,
             title: 'Your CRS score',
             supporting: 'Comprehensive Ranking System',
-            body: 'WorkSettle works it out in Immigration, from the answers '
-                'above and the points IRCC publishes.',
-            note: 'The more of this tab you fill in, the closer it is when '
-                'you ask for it.',
+            body: 'Not worked out yet. WorkSettle calculates it in '
+                'Immigration, from the answers above and the points IRCC '
+                'publishes.',
+            actionLabel: 'Get my CRS score',
+            // Straight to the status screen: what is filled in, what is not.
+            onPressed: () => context.go(Routes.crsOverview),
+            note: 'It is worked out once every section it needs is filled '
+                'in.',
           ),
-        const SizedBox(height: WsSpacing.xxl),
-        Text('Federal programs', style: context.text.titleLarge),
+        const SizedBox(height: WsSpacing.xl),
+        Text('Where you stand', style: context.text.titleMedium),
         const SizedBox(height: WsSpacing.md),
         for (final program in mockFederalPrograms)
           Padding(
@@ -617,45 +638,136 @@ class _ImmigrationProfileTab extends ConsumerWidget {
               ),
             ),
           ),
+        const SizedBox(height: WsSpacing.xl),
+        const _ProgramGroupHeading(
+          eyebrow: 'Provincial Nominee Programs',
+          title: 'PNP programs',
+          body: "Scored on each province's own points grid.",
+        ),
+        const SizedBox(height: WsSpacing.lg),
+        Text('PNP scores', style: context.text.titleMedium),
+        const SizedBox(height: WsSpacing.md),
+        // Same two states as the CRS slot: the way to the scores until they
+        // are asked for, then a readout, one row per province.
+        if (pnpRevealed)
+          WsCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (final (i, score) in pnpScores.indexed) ...[
+                  if (i > 0)
+                    Divider(color: context.colors.outlineVariant, height: 1),
+                  WsListRow(
+                    leading: WsProvinceMark(
+                      code: score.code,
+                      label: score.province,
+                    ),
+                    title: score.province,
+                    subtitle: score.program,
+                    trailing: Text(
+                      '${score.total} / ${score.maximum}',
+                      style: context.text.titleMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    onTap: () => context.go(
+                      Routes.withId(Routes.pnpStreams, score.code),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          )
+        else
+          WsScorePrompt(
+            icon: Icons.map_rounded,
+            title: 'Your PNP scores',
+            supporting: 'Provincial points grids',
+            body: 'Not worked out yet. WorkSettle calculates them in '
+                'Immigration, from your profile and your provincial factors.',
+            actionLabel: 'Get my PNP scores',
+            onPressed: () => context.go(Routes.pnpStatus),
+          ),
+        const SizedBox(height: WsSpacing.xl),
         const WsDisclaimer(),
       ],
     );
   }
 }
 
-/// The CRS answers, in the same sections the CRS questions ask them in, each
-/// editable where it is shown.
+/// Heads one program family on this tab, matching the Immigration tab.
+class _ProgramGroupHeading extends StatelessWidget {
+  const _ProgramGroupHeading({
+    required this.eyebrow,
+    required this.title,
+    required this.body,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            eyebrow.toUpperCase(),
+            style: context.text.labelSmall?.copyWith(color: context.ws.caption),
+          ),
+          const SizedBox(height: WsSpacing.xs),
+          Text(title, style: context.text.titleLarge),
+          const SizedBox(height: WsSpacing.xs),
+          Text(
+            body,
+            style: context.text.bodySmall?.copyWith(color: context.ws.caption),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared wording and formatting for the CRS answer cards below.
 ///
-/// Every card opens [ProfileSection]'s own form, so an answer changed here is
-/// the same answer the CRS Predictor reads — the score below updates as soon
-/// as the form saves.
-///
-/// **Additional factors is deliberately not here**: a provincial nomination
-/// belongs with the provinces, not the federal profile.
-class _CrsAnswerCards extends StatelessWidget {
-  const _CrsAnswerCards({required this.candidate});
+/// **Additional factors is deliberately not among them**: a provincial
+/// nomination belongs with the provinces, not the federal profile.
+abstract final class _CrsAnswers {
+  static const String notAnswered = 'Not answered yet';
 
-  final Candidate candidate;
-
-  static const String _notAnswered = 'Not answered yet';
-
-  static String _years(int? years) => switch (years) {
-        null => _notAnswered,
+  static String years(int? years) => switch (years) {
+        null => notAnswered,
         0 => 'None',
         1 => '1 year',
         final y => '$y years',
       };
 
-  static String _yesNo(bool? value) =>
-      value == null ? _notAnswered : (value ? 'Yes' : 'No');
+  static String yesNo(bool? value) =>
+      value == null ? notAnswered : (value ? 'Yes' : 'No');
 
   /// "CLB 8 in all four" — the lowest ability is the one every CRS combination
   /// is measured against, so it is the number worth showing.
-  static String? _levelLine(LanguageResult? result) {
+  static String? levelLine(LanguageResult? result) {
     if (result == null) return null;
     final levels = clbFor(result).all.reduce((a, b) => a < b ? a : b);
     return '${result.test.french ? 'NCLC' : 'CLB'} $levels in all four';
   }
+
+  /// Every card opens [ProfileSection]'s own form, so an answer changed here is
+  /// the same answer the CRS Predictor reads — the score updates as soon as the
+  /// form saves.
+  static void edit(BuildContext context, ProfileSection section) =>
+      context.push(Routes.withId(Routes.profileSection, section.name));
+}
+
+/// Date of birth and marital status, and who is coming.
+class _AboutYouCard extends StatelessWidget {
+  const _AboutYouCard({required this.candidate});
+
+  final Candidate candidate;
 
   @override
   Widget build(BuildContext context) {
@@ -664,131 +776,161 @@ class _CrsAnswerCards extends StatelessWidget {
     final birth = candidate.birthDate;
     final age = birth == null ? null : ageOn(birth, DateTime.now());
 
-    void edit(ProfileSection section) => context.push(
-          Routes.withId(Routes.profileSection, section.name),
-        );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _FactCard(
-          icon: ProfileSection.aboutYou.icon,
-          title: ProfileSection.aboutYou.title,
-          onOpen: () => edit(ProfileSection.aboutYou),
-          facts: [
-            _Fact(
-              label: 'Date of birth',
-              value: candidate.dateOfBirth.isEmpty
-                  ? _notAnswered
-                  : candidate.dateOfBirth,
-              caption: age == null ? null : 'Age $age',
-            ),
-            _Fact(
-              label: 'Marital status',
-              value: crs.maritalStatus?.label ?? _notAnswered,
-              stacked: true,
-              last: !partner,
-            ),
-            if (partner) ...[
-              _Fact(
-                label: 'Partner coming with you',
-                value: _yesNo(crs.spouseAccompanying),
-              ),
-              _Fact(
-                label: 'Partner is a citizen or PR',
-                value: _yesNo(crs.spouseCanadianOrPr),
-                last: true,
-              ),
-            ],
-          ],
+    return _FactCard(
+      icon: ProfileSection.aboutYou.icon,
+      title: ProfileSection.aboutYou.title,
+      onOpen: () => _CrsAnswers.edit(context, ProfileSection.aboutYou),
+      facts: [
+        _Fact(
+          label: 'Date of birth',
+          value: candidate.dateOfBirth.isEmpty
+              ? _CrsAnswers.notAnswered
+              : candidate.dateOfBirth,
+          caption: age == null ? null : 'Age $age',
         ),
-        const SizedBox(height: WsSpacing.md),
-        _FactCard(
-          icon: ProfileSection.education.icon,
-          title: ProfileSection.education.title,
-          onOpen: () => edit(ProfileSection.education),
-          facts: [
-            _Fact(
-              label: 'Highest qualification',
-              value: crs.education?.label ?? _notAnswered,
-              stacked: true,
-            ),
-            _Fact(
-              label: 'Studied in Canada',
-              value: crs.canadianEducation?.label ?? _notAnswered,
-              stacked: true,
-              last: true,
-            ),
-          ],
+        _Fact(
+          label: 'Marital status',
+          value: crs.maritalStatus?.label ?? _CrsAnswers.notAnswered,
+          stacked: true,
+          last: !partner,
         ),
-        const SizedBox(height: WsSpacing.md),
-        _FactCard(
-          icon: ProfileSection.language.icon,
-          title: ProfileSection.language.title,
-          onOpen: () => edit(ProfileSection.language),
-          facts: [
-            _Fact(
-              label: 'English',
-              value: crs.englishTest?.test.label ?? _notAnswered,
-              caption: _levelLine(crs.englishTest),
-            ),
-            _Fact(
-              label: 'French',
-              value: crs.frenchTest?.test.label ?? _notAnswered,
-              caption: _levelLine(crs.frenchTest),
-              last: true,
-            ),
-          ],
-        ),
-        const SizedBox(height: WsSpacing.md),
-        _FactCard(
-          icon: ProfileSection.work.icon,
-          title: ProfileSection.work.title,
-          onOpen: () => edit(ProfileSection.work),
-          facts: [
-            _Fact(
-              label: 'Skilled work in Canada',
-              value: _years(crs.canadianWorkYears),
-            ),
-            _Fact(
-              label: 'Skilled work abroad',
-              value: _years(crs.foreignWorkYears),
-            ),
-            _Fact(
-              label: 'Trade certificate',
-              value: _yesNo(crs.certificateOfQualification),
-              last: true,
-            ),
-          ],
-        ),
-        // IRCC scores a spouse only when one is coming and is not already a
-        // citizen or PR, so the card appears on exactly the same condition the
-        // CRS questions do.
-        if (ProfileSection.spouse.appliesTo(crs)) ...[
-          const SizedBox(height: WsSpacing.md),
-          _FactCard(
-            icon: ProfileSection.spouse.icon,
-            title: ProfileSection.spouse.title,
-            onOpen: () => edit(ProfileSection.spouse),
-            facts: [
-              _Fact(
-                label: 'Their education',
-                value: crs.spouseEducation?.label ?? _notAnswered,
-                stacked: true,
-              ),
-              _Fact(
-                label: 'Their language test',
-                value: crs.spouseLanguageTest?.test.label ?? _notAnswered,
-                caption: _levelLine(crs.spouseLanguageTest),
-              ),
-              _Fact(
-                label: 'Their work in Canada',
-                value: _years(crs.spouseCanadianWorkYears),
-                last: true,
-              ),
-            ],
+        if (partner) ...[
+          _Fact(
+            label: 'Partner coming with you',
+            value: _CrsAnswers.yesNo(crs.spouseAccompanying),
+          ),
+          _Fact(
+            label: 'Partner is a citizen or PR',
+            value: _CrsAnswers.yesNo(crs.spouseCanadianOrPr),
+            last: true,
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Highest qualification, and any study in Canada.
+class _EducationCard extends StatelessWidget {
+  const _EducationCard({required this.crs});
+
+  final CrsProfile crs;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FactCard(
+      icon: ProfileSection.education.icon,
+      title: ProfileSection.education.title,
+      onOpen: () => _CrsAnswers.edit(context, ProfileSection.education),
+      facts: [
+        _Fact(
+          label: 'Highest qualification',
+          value: crs.education?.label ?? _CrsAnswers.notAnswered,
+          stacked: true,
+        ),
+        _Fact(
+          label: 'Studied in Canada',
+          value: crs.canadianEducation?.label ?? _CrsAnswers.notAnswered,
+          stacked: true,
+          last: true,
+        ),
+      ],
+    );
+  }
+}
+
+/// Skilled work in Canada and abroad, and a trade certificate.
+class _WorkCard extends StatelessWidget {
+  const _WorkCard({required this.crs});
+
+  final CrsProfile crs;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FactCard(
+      icon: ProfileSection.work.icon,
+      title: ProfileSection.work.title,
+      onOpen: () => _CrsAnswers.edit(context, ProfileSection.work),
+      facts: [
+        _Fact(
+          label: 'Skilled work in Canada',
+          value: _CrsAnswers.years(crs.canadianWorkYears),
+        ),
+        _Fact(
+          label: 'Skilled work abroad',
+          value: _CrsAnswers.years(crs.foreignWorkYears),
+        ),
+        _Fact(
+          label: 'Trade certificate',
+          value: _CrsAnswers.yesNo(crs.certificateOfQualification),
+          last: true,
+        ),
+      ],
+    );
+  }
+}
+
+/// English and French results.
+class _LanguageCard extends StatelessWidget {
+  const _LanguageCard({required this.crs});
+
+  final CrsProfile crs;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FactCard(
+      icon: ProfileSection.language.icon,
+      title: ProfileSection.language.title,
+      onOpen: () => _CrsAnswers.edit(context, ProfileSection.language),
+      facts: [
+        _Fact(
+          label: 'English',
+          value: crs.englishTest?.test.label ?? _CrsAnswers.notAnswered,
+          caption: _CrsAnswers.levelLine(crs.englishTest),
+        ),
+        _Fact(
+          label: 'French',
+          value: crs.frenchTest?.test.label ?? _CrsAnswers.notAnswered,
+          caption: _CrsAnswers.levelLine(crs.frenchTest),
+          last: true,
+        ),
+      ],
+    );
+  }
+}
+
+/// The partner's own education, language and Canadian work.
+///
+/// IRCC scores a spouse only when one is coming and is not already a citizen
+/// or PR, so this card appears on exactly the same condition the CRS questions
+/// do — see [ProfileSection.spouse].
+class _SpouseCard extends StatelessWidget {
+  const _SpouseCard({required this.crs});
+
+  final CrsProfile crs;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FactCard(
+      icon: ProfileSection.spouse.icon,
+      title: ProfileSection.spouse.title,
+      onOpen: () => _CrsAnswers.edit(context, ProfileSection.spouse),
+      facts: [
+        _Fact(
+          label: 'Their education',
+          value: crs.spouseEducation?.label ?? _CrsAnswers.notAnswered,
+          stacked: true,
+        ),
+        _Fact(
+          label: 'Their language test',
+          value: crs.spouseLanguageTest?.test.label ?? _CrsAnswers.notAnswered,
+          caption: _CrsAnswers.levelLine(crs.spouseLanguageTest),
+        ),
+        _Fact(
+          label: 'Their work in Canada',
+          value: _CrsAnswers.years(crs.spouseCanadianWorkYears),
+          last: true,
+        ),
       ],
     );
   }

@@ -33,9 +33,18 @@ enum ProfileSection {
     'Their education, language and Canadian work',
     Icons.people_outline_rounded,
   ),
+  family(
+    'Family in Canada',
+    'A brother, sister or parent living in Canada',
+    Icons.family_restroom_rounded,
+  ),
+
+  /// Only what the profile does not already ask. A sibling in Canada, French
+  /// and Canadian study are all additional CRS points too, but each is
+  /// answered in its own section, so it is not asked a second time here.
   additional(
     'Additional factors',
-    'A provincial nomination, or a sibling in Canada',
+    'A provincial or territorial nomination',
     Icons.star_outline_rounded,
   );
 
@@ -72,8 +81,10 @@ enum ProfileSection {
         // A spouse's language test is optional — many partners do not have
         // one — so it does not hold the section open.
         return p.spouseEducation != null && p.spouseCanadianWorkYears != null;
+      case ProfileSection.family:
+        return p.familyInCanada != null;
       case ProfileSection.additional:
-        return p.provincialNomination != null && p.familyInCanada != null;
+        return p.provincialNomination != null;
     }
   }
 }
@@ -88,6 +99,8 @@ class ProfileCompletion {
   /// 0–100. Rendered by the one ring in the product.
   int get percent =>
       sections.isEmpty ? 100 : (done.length * 100 / sections.length).round();
+
+  bool get isComplete => done.length == sections.length;
 
   /// The first unfinished section — where the ring leads.
   ProfileSection? get next {

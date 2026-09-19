@@ -4,11 +4,16 @@
 /// Source: IRCC, *Express Entry: Comprehensive Ranking System (CRS) criteria*
 /// and *Express Entry: Language test results* (canada.ca, checked September
 /// 2026). **Job-offer points were removed from the CRS on 25 March 2025**, so
-/// there is deliberately no job-offer field here.
+/// there is deliberately no CRS job-offer field. A provincial job offer is on
+/// [ProvincialFactors], because the provincial grids still score one.
 ///
 /// Every field is nullable: null means "not answered yet". That distinction is
 /// what drives profile completion — a 0 is an answer, a null is a gap.
 library;
+
+import 'provincial_factors.dart';
+
+export 'provincial_factors.dart';
 
 enum MaritalStatus {
   single('Single, never married'),
@@ -146,6 +151,7 @@ class CrsProfile {
     this.spouseEducation,
     this.spouseLanguageTest,
     this.spouseCanadianWorkYears,
+    this.provincial = const ProvincialFactors(),
   });
 
   final MaritalStatus? maritalStatus;
@@ -184,6 +190,17 @@ class CrsProfile {
   final LanguageResult? spouseLanguageTest;
   final int? spouseCanadianWorkYears;
 
+  /// Answers for the provincial points grids only — none are CRS factors.
+  final ProvincialFactors provincial;
+
+  /// Whether the profile records any Canadian post-secondary study, which
+  /// decides whether the provincial study question is asked at all.
+  bool get studiedInCanada =>
+      canadianEducation != null && canadianEducation != CanadianEducation.none;
+
+  bool get provincialFactorsAnswered =>
+      provincial.isAnswered(studiedInCanada: studiedInCanada);
+
   /// IRCC scores "with a spouse" only when the partner is coming to Canada and
   /// is not already a citizen or permanent resident. Otherwise the candidate is
   /// scored as a single applicant.
@@ -211,6 +228,7 @@ class CrsProfile {
     Object? spouseEducation = _unset,
     Object? spouseLanguageTest = _unset,
     Object? spouseCanadianWorkYears = _unset,
+    ProvincialFactors? provincial,
   }) {
     T? pick<T>(Object? next, T? current) =>
         identical(next, _unset) ? current : next as T?;
@@ -234,6 +252,7 @@ class CrsProfile {
       spouseLanguageTest: pick(spouseLanguageTest, this.spouseLanguageTest),
       spouseCanadianWorkYears:
           pick(spouseCanadianWorkYears, this.spouseCanadianWorkYears),
+      provincial: provincial ?? this.provincial,
     );
   }
 }

@@ -251,6 +251,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ],
                   ),
                   GoRoute(
+                    path: 'pnp-scores',
+                    builder: (_, __) => const PnpStatusScreen(),
+                    routes: [
+                      // The profile's own form, composed here like the CRS
+                      // section form above.
+                      GoRoute(
+                        path: 'ties',
+                        builder: (_, __) => const ProvincialTiesScreen(),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
                     path: 'pnp',
                     builder: (_, __) => const PnpProvincesScreen(),
                     routes: [

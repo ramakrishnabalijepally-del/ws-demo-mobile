@@ -7,19 +7,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/controllers/crs_controller.dart';
-import '../../../../../shared/data/mock_candidate.dart';
-import '../../../../../shared/models/profile_section.dart';
 import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
-import '../../../../profile/profile.dart';
 
 /// Ask for the CRS score, and calculate it.
 ///
-/// Additional factors is asked first when it is still open, because a
-/// provincial nomination is 600 points and a score that does not know about
-/// one is not worth showing. Every other missing section only makes the score
-/// an underestimate, which the result screen already labels as an estimate —
-/// so nothing else blocks the question.
+/// The score is only worked out from a complete profile. Until then the
+/// candidate lands on the status screen, which says what is filled in, what is
+/// not, and opens each missing section where it is answered.
 ///
 /// [toResult] opens the full result screen afterwards. The Immigration tab
 /// does; the profile does not, because the score there is a readout and the
@@ -29,19 +24,9 @@ Future<void> getMyCrsScore(
   WidgetRef ref, {
   bool toResult = true,
 }) async {
-  final candidate = ref.read(candidateProvider);
-  final needsAdditional = !ProfileSection.additional.isComplete(
-    candidate.crs,
-    hasDateOfBirth: candidate.birthDate != null,
-  );
-
-  if (needsAdditional) {
-    final answered = await showAdditionalFactorsSheet(context);
-    if (answered != true || !context.mounted) return;
-  }
-
+  final complete = ref.read(profileCompletionProvider).isComplete;
   await context.push<void>(
-    '${Routes.crsCalculating}?result=$toResult',
+    complete ? '${Routes.crsCalculating}?result=$toResult' : Routes.crsOverview,
   );
 }
 

@@ -10,6 +10,10 @@ import '../../animations/onboarding_motion.dart';
 
 /// A1 — the splash. "Your Journey Starts Here", told once.
 ///
+/// Hands over to sign in rather than to the onboarding slides: the intro is
+/// the globe, and the reader is taken straight to the door once it has been
+/// seen.
+///
 /// The globe rises into place with Canada already facing the reader and turns
 /// slowly, while red streaks run from Manila, Lagos, Colombo, Warsaw, Delhi
 /// and Dubai and land on the Canadian cities they settled in. The wordmark
@@ -62,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
     _advance = Timer(
       reduced ? WsMotion.splashHold : WsMotion.splashDwell,
       () {
-        if (mounted) context.go(Routes.onboarding);
+        if (mounted) context.go(Routes.signIn);
       },
     );
   }

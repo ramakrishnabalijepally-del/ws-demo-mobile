@@ -40,7 +40,7 @@ class ProfileCompletionScreen extends ConsumerWidget {
           WsAppear(child: _CompletionSummary(completion: completion)),
           const SizedBox(height: WsSpacing.lg),
           const WsSyncNote(
-            message: 'Linked to the CRS Predictor in Immigration. Anything '
+            message: 'Linked to your CRS score in Immigration. Anything '
                 'you fill in here updates your score there, and the other way '
                 'round.',
           ),
@@ -66,15 +66,15 @@ class ProfileCompletionScreen extends ConsumerWidget {
                     icon: WsModule.crsPredictor.icon,
                     title: 'Your CRS score',
                     supporting: 'Comprehensive Ranking System',
-                    body: 'Fill in what you can, then ask for your score '
-                        'whenever you are ready.',
+                    body: 'Fill in the sections below, then ask for your '
+                        'score.',
                     actionLabel: 'Get my CRS score',
                     onPressed: () =>
                         getMyCrsScore(context, ref, toResult: false),
-                    note: completion.next == null
+                    note: completion.isComplete
                         ? null
-                        : 'Sections still open only make the score an '
-                            'underestimate — you can ask for it now.',
+                        : 'The score is worked out once every section is '
+                            'filled in.',
                   ),
           ),
           const SizedBox(height: WsSpacing.xxl),

@@ -43,8 +43,13 @@ class SectionForm extends StatelessWidget {
         _LanguageForm(draft: draft, onChanged: onChanged),
       ProfileSection.work => _WorkForm(draft: draft, onChanged: onChanged),
       ProfileSection.spouse => _SpouseForm(draft: draft, onChanged: onChanged),
+      ProfileSection.family => FamilyInCanadaQuestion(
+          value: draft.familyInCanada,
+          onChanged: (value) =>
+              onChanged(draft.copyWith(familyInCanada: value)),
+        ),
       ProfileSection.additional =>
-        AdditionalFactorsForm(draft: draft, onChanged: onChanged),
+        _AdditionalFactorsForm(draft: draft, onChanged: onChanged),
     };
   }
 }
@@ -291,15 +296,12 @@ class _SpouseForm extends StatelessWidget {
   }
 }
 
-/// The Additional factors questions.
-///
-/// Public because the CRS score flow asks them in a sheet before calculating,
-/// and must ask *these* questions rather than a second copy of them.
-class AdditionalFactorsForm extends StatelessWidget {
-  const AdditionalFactorsForm({
+/// The Additional factors question — only the nomination, because every other
+/// additional CRS factor is already asked in the profile section it belongs to.
+class _AdditionalFactorsForm extends StatelessWidget {
+  const _AdditionalFactorsForm({
     required this.draft,
     required this.onChanged,
-    super.key,
   });
 
   final CrsProfile draft;
@@ -316,12 +318,6 @@ class AdditionalFactorsForm extends StatelessWidget {
           value: draft.provincialNomination,
           onChanged: (value) =>
               onChanged(draft.copyWith(provincialNomination: value)),
-        ),
-        _gap,
-        FamilyInCanadaQuestion(
-          value: draft.familyInCanada,
-          onChanged: (value) =>
-              onChanged(draft.copyWith(familyInCanada: value)),
         ),
         _gap,
         WsCard(
