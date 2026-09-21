@@ -18,8 +18,8 @@ Widget _host({bool reduceMotion = false}) {
         builder: (_, __) => const SplashScreen(),
       ),
       GoRoute(
-        path: Routes.signIn,
-        builder: (_, __) => const Scaffold(body: Text('sign in')),
+        path: Routes.onboarding,
+        builder: (_, __) => const Scaffold(body: Text('onboarding')),
       ),
     ],
   );
@@ -92,11 +92,11 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     expect(find.byType(WsGlobe), findsOneWidget);
     expect(find.byType(WsWordmark), findsOneWidget);
-    expect(find.text('sign in'), findsNothing);
+    expect(find.text('onboarding'), findsNothing);
 
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
-    expect(find.text('sign in'), findsOneWidget);
+    expect(find.text('onboarding'), findsOneWidget);
   });
 
   test('the lockup fades in rather than popping on', () {
@@ -136,6 +136,6 @@ void main() {
     await tester.pumpWidget(_host(reduceMotion: true));
     await tester.pump(WsMotion.splashHold + WsMotion.slow);
     await tester.pumpAndSettle();
-    expect(find.text('sign in'), findsOneWidget);
+    expect(find.text('onboarding'), findsOneWidget);
   });
 }
