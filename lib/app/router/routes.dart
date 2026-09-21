@@ -63,13 +63,13 @@ abstract final class Routes {
   static const String crsSection = '/immigration/crs/section/:section';
   static const String crsBreakdown = '/immigration/crs/result/breakdown';
 
-  /// What the PNP scores need and what is still missing — where "Get my PNP
-  /// scores" leads.
-  static const String pnpStatus = '/immigration/pnp-scores';
+  /// What one province's PNP score needs and what is still missing — where a
+  /// province card's "Get score" leads. Each province is generated on its own.
+  static const String pnpStatus = '/immigration/pnp-scores/:province';
 
-  /// Provincial factors — family, work, study and a job offer in a province,
-  /// asked for the PNP scores, not the CRS.
-  static const String pnpTies = '/immigration/pnp-scores/ties';
+  /// One province's factors — family, work, study and a job offer there,
+  /// asked for that province's PNP score, not the CRS.
+  static const String pnpTies = '/immigration/pnp-scores/:province/factors';
   static const String pnpProvinces = '/immigration/pnp';
   static const String pnpStreams = '/immigration/pnp/:province';
   static const String pnpEligibility = '/immigration/pnp/:province/:stream';

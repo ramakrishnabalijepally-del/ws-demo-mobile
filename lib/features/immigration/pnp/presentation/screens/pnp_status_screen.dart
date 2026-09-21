@@ -4,30 +4,48 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
+import '../../../../../shared/models/provincial_factors.dart';
 import '../../../../../shared/shared.dart';
 import '../../../controllers/pnp_status.dart';
 import '../../../widgets/score_status_list.dart';
 
-/// What the PNP scores need, and what is still missing.
+/// What one province's PNP score needs, and what is still missing.
 ///
-/// The provincial counterpart of the CRS status screen: each section the
-/// points grids read, filled in or not, each opening the profile's own form.
-/// Once nothing is missing, the button reveals the scores on the Immigration
-/// tab.
+/// The provincial counterpart of the CRS status screen, one province at a
+/// time: each profile section the grid reads, plus that province's own
+/// questions, each opening its form. Once nothing is missing, the button
+/// reveals this province's score — and no other.
 class PnpStatusScreen extends ConsumerWidget {
-  const PnpStatusScreen({super.key});
+  const PnpStatusScreen({required this.provinceCode, super.key});
+
+  /// Two-letter code: AB, BC, SK or MB.
+  final String provinceCode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final province = ProvinceTie.forCode(provinceCode);
+    if (province == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('PNP score')),
+        body: Padding(
+          padding: WsSpacing.gutter,
+          child: Text(
+            'This province does not rank candidates on a points grid.',
+            style: context.text.bodyMedium,
+          ),
+        ),
+      );
+    }
+    final code = province.code!;
     final completion = ref.watch(pnpCompletionProvider);
-    final tiesAnswered = ref.watch(pnpTiesAnsweredProvider);
+    final tiesAnswered = ref.watch(pnpFactorsAnsweredProvider(code));
     final ready = completion.isComplete && tiesAnswered;
     final missing = completion.sections.length -
         completion.done.length +
         (tiesAnswered ? 0 : 1);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your PNP scores')),
+      appBar: AppBar(title: Text('${province.label} score')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           WsSpacing.xl,
@@ -39,15 +57,14 @@ class PnpStatusScreen extends ConsumerWidget {
           Text(
             ready
                 ? 'Everything is filled in'
-                : 'Fill these in to get your PNP scores',
+                : 'Fill these in to get your ${province.label} score',
             style: context.text.headlineLarge,
           ),
           const SizedBox(height: WsSpacing.md),
           Text(
-            'Alberta, British Columbia, Saskatchewan and Manitoba each rank '
-            'candidates on their own points grid. WorkSettle scores you on '
-            'each from your profile, and anything you save there shows here '
-            'straight away.',
+            '${province.label} ranks candidates on its own points grid. '
+            'WorkSettle scores you on it from your profile, and anything you '
+            'save there shows here straight away.',
             style: context.text.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
@@ -66,20 +83,20 @@ class PnpStatusScreen extends ConsumerWidget {
                 ),
               // Not a CRS factor, so not a profile section: asked here.
               ScoreStatusItem(
-                title: 'Provincial factors',
+                title: '${province.label} factors',
                 icon: Icons.location_on_outlined,
                 done: tiesAnswered,
                 whereToFill: 'Asked here — family, work, study or a job offer '
-                    'in a province',
-                onTap: () => context.push(Routes.pnpTies),
+                    'in ${province.label}',
+                onTap: () => context.push(Routes.withId(Routes.pnpTies, code)),
               ),
             ],
           ),
           const SizedBox(height: WsSpacing.xl),
           Text(
             'A few smaller factors — sector endorsements, regional bonuses — '
-            'are not asked yet. Each province lists them under "Not counted '
-            'yet", so your scores are a floor.',
+            'are not asked yet. The breakdown lists them under "Not counted '
+            'yet", so your score is a floor.',
             style: context.text.bodySmall?.copyWith(color: context.ws.caption),
           ),
           const SizedBox(height: WsSpacing.xxl),
@@ -110,10 +127,10 @@ class PnpStatusScreen extends ConsumerWidget {
                 const SizedBox(height: WsSpacing.sm),
               ],
               WsPrimaryButton(
-                label: 'Get my PNP scores',
+                label: 'Get my ${province.label} score',
                 onPressed: ready
                     ? () {
-                        ref.read(pnpRevealedProvider.notifier).reveal();
+                        ref.read(pnpRevealedProvider.notifier).reveal(code);
                         context.pop();
                       }
                     : null,

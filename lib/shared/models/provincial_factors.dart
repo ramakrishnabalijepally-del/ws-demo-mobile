@@ -9,16 +9,34 @@ library;
 /// A province, for the provincial grids. Only the four with a grid are named;
 /// every other province or territory is [elsewhere].
 enum ProvinceTie {
-  alberta('Alberta'),
-  britishColumbia('British Columbia'),
-  saskatchewan('Saskatchewan'),
-  manitoba('Manitoba'),
-  elsewhere('Another province or territory'),
-  none('None');
+  alberta('Alberta', 'AB'),
+  britishColumbia('British Columbia', 'BC'),
+  saskatchewan('Saskatchewan', 'SK'),
+  manitoba('Manitoba', 'MB'),
+  elsewhere('Another province or territory', null),
+  none('None', null);
 
-  const ProvinceTie(this.label);
+  const ProvinceTie(this.label, this.code);
 
   final String label;
+
+  /// The two-letter code the routes and flags use; null for the catch-alls.
+  final String? code;
+
+  /// The four provinces with a points grid, in the order they are shown.
+  static const List<ProvinceTie> scored = [
+    alberta,
+    britishColumbia,
+    saskatchewan,
+    manitoba,
+  ];
+
+  static ProvinceTie? forCode(String code) {
+    for (final tie in scored) {
+      if (tie.code == code.toUpperCase()) return tie;
+    }
+    return null;
+  }
 }
 
 /// Where in British Columbia a job is — the SIRS area of employment.
@@ -46,6 +64,7 @@ class ProvincialFactors {
     this.bcHourlyWage,
     this.bcArea,
     this.workingForEmployer,
+    this.answeredFor = const {},
   });
 
   /// Where a parent, brother, sister or child lives — 18 or older, citizen or
@@ -85,35 +104,14 @@ class ProvincialFactors {
   /// months or more in Manitoba, Manitoba's 500-point demand factor.
   final bool? workingForEmployer;
 
-  /// Everything the four grids need, given whether there is any Canadian
-  /// post-secondary study to place.
-  bool isAnswered({required bool studiedInCanada}) {
-    final worked = workedIn;
-    final studied = studiedIn;
-    if (immediateFamily == null || extendedFamily == null || worked == null) {
-      return false;
-    }
-    if (worked.contains(ProvinceTie.saskatchewan) &&
-        saskatchewanWorkYear == null) {
-      return false;
-    }
-    if (studiedInCanada) {
-      if (studied == null || studied.isEmpty) return false;
-      if (studied.contains(ProvinceTie.manitoba) &&
-          manitobaStudyTwoYears == null) {
-        return false;
-      }
-    }
-    return switch (jobOffer) {
-      null => false,
-      ProvinceTie.alberta =>
-        albertaJobOutsideCities != null && albertaJobRegulated != null,
-      ProvinceTie.britishColumbia =>
-        bcHourlyWage != null && bcArea != null && workingForEmployer != null,
-      ProvinceTie.manitoba => workingForEmployer != null,
-      _ => true,
-    };
-  }
+  /// The provinces whose own questions have been answered and saved.
+  ///
+  /// Each province is scored on its own, so each asks only what its grid
+  /// reads. Answering Alberta's questions says nothing about Manitoba's, so
+  /// the sets above cannot tell on their own which provinces are done.
+  final Set<ProvinceTie> answeredFor;
+
+  bool isAnsweredFor(ProvinceTie province) => answeredFor.contains(province);
 
   static const Object _unset = Object();
 
@@ -131,6 +129,7 @@ class ProvincialFactors {
     Object? bcHourlyWage = _unset,
     Object? bcArea = _unset,
     Object? workingForEmployer = _unset,
+    Set<ProvinceTie>? answeredFor,
   }) {
     T? pick<T>(Object? next, T? current) =>
         identical(next, _unset) ? current : next as T?;
@@ -151,6 +150,7 @@ class ProvincialFactors {
       bcHourlyWage: pick(bcHourlyWage, this.bcHourlyWage),
       bcArea: pick(bcArea, this.bcArea),
       workingForEmployer: pick(workingForEmployer, this.workingForEmployer),
+      answeredFor: answeredFor ?? this.answeredFor,
     );
   }
 }

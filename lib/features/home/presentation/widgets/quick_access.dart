@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/providers.dart';
 import '../../../../app/router/routes.dart';
 import '../../../../app/theme/theme.dart';
 import '../../../../shared/shared.dart';
 
 /// The three tools under "Your tools" on the dashboard:
-/// **Immigration · Jobs · Language Support.**
+/// **Immigration · Jobs · Settlement.**
 ///
 /// Each is a photo banner. The photos are demo stand-ins until client
 /// photography arrives; the layout does not change when they are swapped.
@@ -16,7 +14,7 @@ import '../../../../shared/shared.dart';
 /// No second hue enters this system (design system section 2), so Jobs takes
 /// the brand red as the entry point to the product and the other two are ink
 /// on Grey 100, told apart by their glyph.
-class QuickAccess extends ConsumerWidget {
+class QuickAccess extends StatelessWidget {
   const QuickAccess({this.entrance, super.key});
 
   /// The screen's entrance timeline. Null shows every banner at rest;
@@ -24,11 +22,7 @@ class QuickAccess extends ConsumerWidget {
   final Animation<double>? entrance;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Language support is a Pro+ add-on, so the banner is honest about being
-    // locked rather than failing after the tap.
-    final languageLocked = ref.watch(planTierProvider) != PlanTier.proPlus;
-
+  Widget build(BuildContext context) {
     final entrance = this.entrance ?? kAlwaysCompleteAnimation;
 
     return Column(
@@ -69,14 +63,11 @@ class QuickAccess extends ConsumerWidget {
           end: 0.98,
           fromScale: 0.96,
           child: _Banner(
-            icon: Icons.record_voice_over_rounded,
-            hero: WsHero.language,
-            label: 'Language Support',
-            blurb: 'Live small-group English and French classes',
-            locked: languageLocked,
-            onTap: () => languageLocked
-                ? context.push(Routes.paywall, extra: 'Language Support')
-                : context.go(Routes.resources),
+            icon: Icons.home_rounded,
+            hero: WsHero.tileSettlement,
+            label: 'Settlement',
+            blurb: 'Arrival checklist, consultations and local resources',
+            onTap: () => context.go(Routes.settlement),
           ),
         ),
       ],
@@ -92,7 +83,6 @@ class _Banner extends StatelessWidget {
     required this.blurb,
     required this.onTap,
     this.brand = false,
-    this.locked = false,
   });
 
   final IconData icon;
@@ -103,8 +93,6 @@ class _Banner extends StatelessWidget {
 
   /// Jobs alone carries the brand red.
   final bool brand;
-
-  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -186,19 +174,11 @@ class _Banner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: WsSpacing.md),
-                if (locked)
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 18,
-                    color: ws.placeholder,
-                    semanticLabel: 'Pro+ feature',
-                  )
-                else
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: WsIconSize.chevron + 4,
-                    color: ws.placeholder,
-                  ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: WsIconSize.chevron + 4,
+                  color: ws.placeholder,
+                ),
               ],
             ),
           ),

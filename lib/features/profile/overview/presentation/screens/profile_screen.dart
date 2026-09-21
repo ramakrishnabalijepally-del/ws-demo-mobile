@@ -8,7 +8,6 @@ import '../../../../../shared/controllers/crs_controller.dart';
 import '../../../../../shared/data/mock_candidate.dart';
 import '../../../../../shared/models/candidate.dart';
 import '../../../../../shared/models/immigration_details.dart';
-import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
 import '../../../../../shared/models/crs_profile.dart';
 import '../../../../../shared/models/profile_section.dart';
@@ -19,11 +18,11 @@ import '../../../data/mock_profile.dart';
 
 /// M1, M3–M7 — the Profile screen and its five tabs.
 ///
-/// Overview · Basic profile · Immigration profile · Jobs · Documents.
+/// Overview · Immigration profile · Jobs · Documents.
 ///
-/// Overview is the summary of the two profiles side by side, each in its own
-/// card with its own Edit button; the two tabs after it are the same profiles
-/// in full. **Every field a tab shows is a field the edit screen edits**, so
+/// Overview carries the basic profile in full and the immigration profile in
+/// summary, each in its own card with its own Edit button. There is no
+/// separate Basic profile tab: it would only repeat the Overview card. **Every field a tab shows is a field the edit screen edits**, so
 /// the reader never opens Edit and finds a different set of questions. The CRS
 /// Predictor sits under Immigration profile, beside the passport and status it
 /// belongs with. The active tab is marked by a 2.5 px red underline — **the
@@ -38,7 +37,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final TabController _tabs = TabController(length: 4, vsync: this);
 
   @override
   void dispose() {
@@ -66,7 +65,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: 'Overview'),
-            Tab(text: 'Basic profile'),
             Tab(text: 'Immigration profile'),
             Tab(text: 'Jobs'),
             Tab(text: 'Documents'),
@@ -82,10 +80,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               children: [
                 _OverviewTab(
                   candidate: candidate,
-                  onOpenBasic: () => _tabs.animateTo(1),
-                  onOpenImmigration: () => _tabs.animateTo(2),
+                  onOpenImmigration: () => _tabs.animateTo(1),
                 ),
-                _BasicProfileTab(candidate: candidate),
                 _ImmigrationProfileTab(candidate: candidate),
                 const _JobsTab(),
                 const _DocumentsTab(),
@@ -264,20 +260,17 @@ const EdgeInsets _tabPadding = EdgeInsets.fromLTRB(
   WsSpacing.xxxl,
 );
 
-/// Overview — both profiles as summary cards, each opening its own editor.
+/// Overview — both profiles as cards, each opening its own editor.
 ///
-/// The cards show the same fields as the two tabs behind them, so this is a
-/// shortcut rather than a third version of the truth. Tapping a card body
-/// moves to that tab; the Edit button goes straight to the form.
+/// The basic profile is shown here in full, so it has no tab of its own. The
+/// immigration card is a summary of the tab behind it; its link moves there.
 class _OverviewTab extends StatelessWidget {
   const _OverviewTab({
     required this.candidate,
-    required this.onOpenBasic,
     required this.onOpenImmigration,
   });
 
   final Candidate candidate;
-  final VoidCallback onOpenBasic;
   final VoidCallback onOpenImmigration;
 
   @override
@@ -292,9 +285,7 @@ class _OverviewTab extends StatelessWidget {
           child: _OverviewCard(
             icon: Icons.person_outline_rounded,
             title: 'Basic profile',
-            openLabel: 'See the full basic profile',
             onEdit: () => context.push(Routes.profileEdit),
-            onOpen: onOpenBasic,
             facts: basicProfileFacts(candidate),
           ),
         ),
@@ -342,23 +333,27 @@ class _OverviewCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.facts,
-    required this.openLabel,
     required this.onEdit,
-    required this.onOpen,
+    this.openLabel,
+    this.onOpen,
   });
 
   final IconData icon;
   final String title;
   final List<Widget> facts;
 
-  /// The link into the full tab, named so it says where it goes.
-  final String openLabel;
+  /// The link into the full tab, named so it says where it goes. Null for a
+  /// card that is already the whole profile.
+  final String? openLabel;
 
   final VoidCallback onEdit;
-  final VoidCallback onOpen;
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
+    final openLabel = this.openLabel;
+    final onOpen = this.onOpen;
+
     return WsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -377,23 +372,25 @@ class _OverviewCard extends StatelessWidget {
           ),
           Divider(color: context.colors.outlineVariant, height: WsSpacing.xxl),
           ...facts,
-          const SizedBox(height: WsSpacing.md),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: WsLink(
-              label: openLabel,
-              underline: false,
-              onPressed: onOpen,
+          if (openLabel != null && onOpen != null) ...[
+            const SizedBox(height: WsSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: WsLink(
+                label: openLabel,
+                underline: false,
+                onPressed: onOpen,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// The Basic profile fields, in one list so the Overview card, the Basic
-/// profile tab and the edit form can never drift apart.
+/// The Basic profile fields, in one list so the Overview card and the edit
+/// form can never drift apart.
 List<Widget> basicProfileFacts(Candidate candidate) {
   final code = WsProvinceMark.countryCodeFor(candidate.countryOfOrigin);
 
@@ -416,45 +413,17 @@ List<Widget> basicProfileFacts(Candidate candidate) {
   ];
 }
 
-class _BasicProfileTab extends StatelessWidget {
-  const _BasicProfileTab({required this.candidate});
-
-  final Candidate candidate;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: _tabPadding,
-      children: [
-        _TabHeading(
-          title: 'Basic profile',
-          onEdit: () => context.push(Routes.profileEdit),
-        ),
-        const SizedBox(height: WsSpacing.md),
-        WsCard(child: Column(children: basicProfileFacts(candidate))),
-      ],
-    );
-  }
-}
-
-/// Passport, status in Canada and family, then the CRS score and the federal
-/// programs — everything immigration in one place.
+/// Passport, status in Canada and family, then the federal and PNP scores —
+/// everything immigration in one place.
 ///
-/// **The score card is a readout and nothing more, in both of its states.** It
-/// does not open the CRS Predictor and it carries no tap target, because the
-/// answers behind it are already on this tab — each in its own card, each
-/// opening its own form. A number you can press implies somewhere else to go;
-/// there isn't one.
+/// **The scores here are readouts, never generators.** Each is generated in
+/// Immigration and nowhere else — one place to ask for it. Before it exists,
+/// its slot says where to go; once it does, tapping it opens the breakdown.
 ///
-/// The tab reads in one direction: the facts, then every answer the score is
-/// built from, then the score itself. A total placed before its own inputs
-/// asks the reader to take it on trust.
-///
-/// Before the score has been asked for, the slot says where it comes from
-/// rather than offering to produce it. **The CRS score is generated in
-/// Immigration and nowhere else** — one place to ask for it, so the reader
-/// never has to work out which of two buttons they pressed last.
-class _ImmigrationProfileTab extends ConsumerWidget {
+/// The tab reads in one direction: the facts, then every answer the scores
+/// are built from, then the scores themselves. A total placed before its own
+/// inputs asks the reader to take it on trust.
+class _ImmigrationProfileTab extends StatelessWidget {
   const _ImmigrationProfileTab({required this.candidate});
 
   final Candidate candidate;
@@ -462,12 +431,7 @@ class _ImmigrationProfileTab extends ConsumerWidget {
   static const String _notAdded = 'Not added yet';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final crs = ref.watch(crsResultProvider);
-    final verdict = crsVerdict(crs.total);
-    final revealed = ref.watch(crsRevealedProvider);
-    final pnpRevealed = ref.watch(pnpRevealedProvider);
-    final pnpScores = ref.watch(pnpScoresProvider);
+  Widget build(BuildContext context) {
     final details = candidate.immigration;
     final family = candidate.crs.familyInCanada;
     final today = DateTime.now();
@@ -564,130 +528,28 @@ class _ImmigrationProfileTab extends ConsumerWidget {
           _SpouseCard(crs: candidate.crs),
         ],
         const SizedBox(height: WsSpacing.xxl),
-        // The total comes after the answers it is made of, not before them:
-        // the reader sees what they have given, then what it adds up to. It
-        // sits under Federal programs, as on the Immigration tab, because the
-        // CRS is how Express Entry ranks candidates.
-        const _ProgramGroupHeading(
-          eyebrow: 'Express Entry',
-          title: 'Federal programs',
-          body: 'Scored on the Comprehensive Ranking System (CRS).',
+        // The totals come after the answers they are made of, not before
+        // them: the reader sees what they have given, then what it adds up
+        // to. Both are readouts — generated in Immigration, never here.
+        const _ScoreHeading(
+          title: 'Federal score',
+          about: 'Express Entry ranks candidates on the Comprehensive Ranking '
+              'System (CRS), out of 1,200 points. WorkSettle works it out from '
+              'the answers above using the points IRCC publishes. Generate it '
+              'in Immigration; once it is there, tap it for the breakdown.',
         ),
-        const SizedBox(height: WsSpacing.lg),
-        Text('CRS score', style: context.text.titleMedium),
         const SizedBox(height: WsSpacing.md),
-        // Two states, and the difference between them is the whole point.
-        //
-        // Before there is a score, the slot's job is to answer "where do I get
-        // this?" — so it says where the number is worked out and carries the
-        // button that takes the reader there. Saying only that it happens in
-        // Immigration, with nothing to press, left people hunting for it.
-        //
-        // Once there is a score, the slot is a readout and nothing more: the
-        // answers behind it are already on this tab, so there is nowhere left
-        // to send anyone and the card carries no tap target at all.
-        if (revealed)
-          WsScoreCard(
-            icon: WsModule.crsPredictor.icon,
-            title: 'Your CRS score',
-            supporting: 'Comprehensive Ranking System',
-            value: crs.total,
-            maximum: crsMaximum,
-            verdict: verdict.verdict,
-            verdictLabel: verdict.label,
-            contextLine: mockRecentDraws,
-            brandFill: true,
-            showDisclaimer: true,
-          )
-        else
-          WsScorePrompt(
-            icon: WsModule.crsPredictor.icon,
-            title: 'Your CRS score',
-            supporting: 'Comprehensive Ranking System',
-            body: 'Not worked out yet. WorkSettle calculates it in '
-                'Immigration, from the answers above and the points IRCC '
-                'publishes.',
-            actionLabel: 'Get my CRS score',
-            // Straight to the status screen: what is filled in, what is not.
-            onPressed: () => context.go(Routes.crsOverview),
-            note: 'It is worked out once every section it needs is filled '
-                'in.',
-          ),
-        const SizedBox(height: WsSpacing.xl),
-        Text('Where you stand', style: context.text.titleMedium),
-        const SizedBox(height: WsSpacing.md),
-        for (final program in mockFederalPrograms)
-          Padding(
-            padding: const EdgeInsets.only(bottom: WsSpacing.md),
-            child: WsCard(
-              child: Row(
-                children: [
-                  const WsProvinceMark.canada(),
-                  const SizedBox(width: WsSpacing.md),
-                  Expanded(
-                    child: Text(program.name, style: context.text.titleMedium),
-                  ),
-                  const SizedBox(width: WsSpacing.md),
-                  WsVerdictChip(
-                    verdict: program.eligible
-                        ? WsVerdict.eligible
-                        : WsVerdict.explore,
-                    label: program.eligible ? 'Eligible' : 'Explore',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: WsSpacing.xl),
-        const _ProgramGroupHeading(
-          eyebrow: 'Provincial Nominee Programs',
-          title: 'PNP programs',
-          body: "Scored on each province's own points grid.",
+        const _CrsScoreTile(),
+        const SizedBox(height: WsSpacing.xxl),
+        const _ScoreHeading(
+          title: 'PNP score',
+          about: 'Provincial Nominee Programs let a province nominate you for '
+              'permanent residence. Each province scores you on its own grid, '
+              'so each score is generated on its own in Immigration. Tap a '
+              'score for its breakdown.',
         ),
-        const SizedBox(height: WsSpacing.lg),
-        Text('PNP scores', style: context.text.titleMedium),
         const SizedBox(height: WsSpacing.md),
-        // Same two states as the CRS slot: the way to the scores until they
-        // are asked for, then a readout, one row per province.
-        if (pnpRevealed)
-          WsCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (final (i, score) in pnpScores.indexed) ...[
-                  if (i > 0)
-                    Divider(color: context.colors.outlineVariant, height: 1),
-                  WsListRow(
-                    leading: WsProvinceMark(
-                      code: score.code,
-                      label: score.province,
-                    ),
-                    title: score.province,
-                    subtitle: score.program,
-                    trailing: Text(
-                      '${score.total} / ${score.maximum}',
-                      style: context.text.titleMedium?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    onTap: () => context.go(
-                      Routes.withId(Routes.pnpStreams, score.code),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          )
-        else
-          WsScorePrompt(
-            icon: Icons.map_rounded,
-            title: 'Your PNP scores',
-            supporting: 'Provincial points grids',
-            body: 'Not worked out yet. WorkSettle calculates them in '
-                'Immigration, from your profile and your provincial factors.',
-            actionLabel: 'Get my PNP scores',
-            onPressed: () => context.go(Routes.pnpStatus),
-          ),
+        const PnpProvinceGrid(canGenerate: false),
         const SizedBox(height: WsSpacing.xl),
         const WsDisclaimer(),
       ],
@@ -695,36 +557,115 @@ class _ImmigrationProfileTab extends ConsumerWidget {
   }
 }
 
-/// Heads one program family on this tab, matching the Immigration tab.
-class _ProgramGroupHeading extends StatelessWidget {
-  const _ProgramGroupHeading({
-    required this.eyebrow,
-    required this.title,
-    required this.body,
-  });
+/// A score's heading with its explanation folded away beneath it.
+///
+/// The explanation is there for the reader who wants it and out of the way
+/// for the one who does not — the number is what most people came for.
+class _ScoreHeading extends StatelessWidget {
+  const _ScoreHeading({required this.title, required this.about});
 
-  final String eyebrow;
   final String title;
-  final String body;
+  final String about;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            eyebrow.toUpperCase(),
-            style: context.text.labelSmall?.copyWith(color: context.ws.caption),
-          ),
-          const SizedBox(height: WsSpacing.xs),
-          Text(title, style: context.text.titleLarge),
-          const SizedBox(height: WsSpacing.xs),
-          Text(
-            body,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(title, style: context.text.titleLarge),
+        ),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: WsSpacing.sm),
+          expandedAlignment: Alignment.centerLeft,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          title: Text(
+            'What is this?',
             style: context.text.bodySmall?.copyWith(color: context.ws.caption),
           ),
+          children: [
+            Text(
+              about,
+              style:
+                  context.text.bodySmall?.copyWith(color: context.ws.caption),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The CRS score, small. It is never generated here: before it exists the
+/// tile says where to get it; once it does, the tile opens the breakdown.
+class _CrsScoreTile extends ConsumerWidget {
+  const _CrsScoreTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final revealed = ref.watch(crsRevealedProvider);
+    final crs = ref.watch(crsResultProvider);
+    final verdict = crsVerdict(crs.total);
+
+    return WsCard(
+      // Cross-tab, so `go`: the breakdown lives in the Immigration branch.
+      onTap: revealed ? () => context.go(Routes.crsBreakdown) : null,
+      child: Row(
+        children: [
+          // The CRS is Canada's federal score, so it carries the flag.
+          const WsProvinceMark.canada(),
+          const SizedBox(width: WsSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('CRS score', style: context.text.bodySmall),
+                if (revealed) ...[
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${crs.total}',
+                          style: context.text.headlineLarge?.copyWith(
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / $crsMaximum',
+                          style: WsTypography.denominator(context.ws.caption),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: WsSpacing.xs),
+                  // Under the number, not beside it: a verdict and a chevron
+                  // beside the score do not fit on a 360 dp phone.
+                  WsVerdictChip(verdict: verdict.verdict, label: verdict.label),
+                ] else ...[
+                  Text('Not generated yet', style: context.text.titleMedium),
+                  Text(
+                    'Generate it in Immigration.',
+                    style: context.text.bodySmall
+                        ?.copyWith(color: context.ws.caption),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (revealed) ...[
+            const SizedBox(width: WsSpacing.sm),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: WsIconSize.chevron + 4,
+              color: context.ws.placeholder,
+            ),
+          ],
         ],
       ),
     );

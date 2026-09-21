@@ -21,6 +21,7 @@ export 'data/mock_immigration.dart'
         mockProvinces,
         mockRecentDraws;
 export 'hub/presentation/screens/immigration_screen.dart';
+export 'widgets/pnp_province_grid.dart';
 export 'pnp/presentation/screens/pnp_screens.dart';
 export 'pnp/presentation/screens/pnp_status_screen.dart';
 export 'crs/presentation/screens/crs_calculating_screen.dart';

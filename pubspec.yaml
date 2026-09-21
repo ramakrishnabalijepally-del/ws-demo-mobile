@@ -28,9 +28,9 @@ flutter:
     - assets/images/hero_immigration.jpg
     - assets/images/hero_job_portal.jpg
     - assets/images/hero_user_profile.jpg
-    - assets/images/hero_language.jpg
     - assets/images/tile_immigration.jpg
     - assets/images/tile_jobs.jpg
+    - assets/images/tile_settlement.jpg
     - assets/images/worksettle_logo.png
     - assets/images/provinces/
     - assets/images/countries/

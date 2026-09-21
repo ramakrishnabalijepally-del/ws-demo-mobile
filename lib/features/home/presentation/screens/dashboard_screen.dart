@@ -13,7 +13,6 @@ import '../../../../shared/shared.dart';
 import '../../data/mock_home.dart';
 import '../widgets/module_grid.dart';
 import '../widgets/quick_access.dart';
-import '../widgets/tip_card.dart';
 
 /// D1 — the dashboard. `design/worksettle-design-system.md` section 18.
 ///
@@ -25,8 +24,8 @@ import '../widgets/tip_card.dart';
 /// where section 14 allows that.
 ///
 /// On first arrival the screen assembles top to bottom from one controller:
-/// the greeting lands and its strength ring fills, then the tools, the explore
-/// banners and the tip follow. It plays once per visit to the tab's stack, and
+/// the greeting lands and its strength ring fills, then the tools and the
+/// explore banners follow. It plays once per visit to the tab's stack, and
 /// under reduced motion everything is simply there.
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -154,30 +153,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
           const SizedBox(height: WsSpacing.md),
           QuickAccess(entrance: _entrance),
-          const SizedBox(height: WsSpacing.xxxl),
-
-          WsRiseIn(
-            entrance: _entrance,
-            begin: 0.6,
-            end: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SectionHeader(
-                  title: 'Tips for you',
-                  actionLabel: 'See all',
-                  onAction: () => context.push(Routes.tips),
-                ),
-                const SizedBox(height: WsSpacing.md),
-                TipCard(
-                  tip: mockTips.first,
-                  onTap: () => context.push(
-                    Routes.withId(Routes.tipArticle, mockTips.first.id),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

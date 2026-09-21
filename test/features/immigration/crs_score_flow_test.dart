@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:worksettle_mobile/app/router/app_router.dart';
 import 'package:worksettle_mobile/app/router/routes.dart';
 import 'package:worksettle_mobile/app/theme/theme.dart';
+import 'package:worksettle_mobile/features/immigration/immigration.dart';
 import 'package:worksettle_mobile/shared/controllers/crs_controller.dart';
 import 'package:worksettle_mobile/shared/data/mock_candidate.dart';
 import 'package:worksettle_mobile/shared/shared.dart';
@@ -188,39 +189,38 @@ void main() {
       (tester) async {
     final container = await pumpApp(tester, size: const Size(390, 4000));
 
-    // Before: the immigration profile offers the button, not a number.
+    // Before: the immigration profile says where to get it, and offers no
+    // way to generate it here.
     await go(tester, container, Routes.profile);
     final tab = find.widgetWithText(Tab, 'Immigration profile');
     await tester.ensureVisible(tab);
     await tester.pumpAndSettle();
     await tester.tap(tab);
     await tester.pumpAndSettle();
-    expect(
-      find.widgetWithText(WsScorePrompt, 'Your CRS score'),
-      findsOneWidget,
-    );
-    expect(find.byType(WsScoreCard), findsNothing);
+    expect(find.text('Not generated yet'), findsOneWidget);
+    expect(find.text('Get my CRS score'), findsNothing);
 
     // Generated in Immigration.
     await go(tester, container, Routes.immigration);
     await fillInTheMissingSections(tester);
     await getTheScore(tester);
 
-    // After: the same tab now carries the score, and it is still a readout.
+    // After: the same tab carries the live score, and it opens the
+    // breakdown.
     await go(tester, container, Routes.profile);
     await tester.ensureVisible(tab);
     await tester.pumpAndSettle();
     await tester.tap(tab);
     await tester.pumpAndSettle();
 
-    final card = tester.widget<WsScoreCard>(
-      find.widgetWithText(WsScoreCard, 'Your CRS score'),
-    );
-    expect(card.value, container.read(crsResultProvider).total);
-    expect(card.onTap, isNull);
-    expect(
-      find.widgetWithText(WsScorePrompt, 'Your CRS score'),
-      findsNothing,
-    );
+    final total = container.read(crsResultProvider).total;
+    expect(find.text('Not generated yet'), findsNothing);
+    final score = find.textContaining('$total', findRichText: true);
+    expect(score, findsOneWidget);
+    await tester.ensureVisible(score);
+    await tester.pumpAndSettle();
+    await tester.tap(score);
+    await tester.pumpAndSettle();
+    expect(find.byType(CrsBreakdownScreen), findsOneWidget);
   });
 }

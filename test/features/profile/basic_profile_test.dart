@@ -7,8 +7,8 @@ import 'package:worksettle_mobile/app/theme/theme.dart';
 import 'package:worksettle_mobile/shared/data/mock_candidate.dart';
 import 'package:worksettle_mobile/shared/shared.dart';
 
-/// The Basic profile shows exactly what the edit form edits, and the Overview
-/// tab summarises both profiles.
+/// The Basic profile shows exactly what the edit form edits, and lives on the
+/// Overview tab alone — there is no Basic profile tab to repeat it.
 void main() {
   Future<ProviderContainer> pumpApp(WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 2600);
@@ -45,7 +45,8 @@ void main() {
     expect(find.text('Basic profile'), findsWidgets);
     expect(find.text('Immigration profile'), findsWidgets);
     expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
-    expect(find.text('See the full basic profile'), findsOneWidget);
+    // The basic card is the whole profile, so it links nowhere further.
+    expect(find.text('See the full basic profile'), findsNothing);
     expect(find.text('See the full immigration profile'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -59,7 +60,6 @@ void main() {
         tester.widgetList<Tab>(find.byType(Tab)).map((t) => t.text).toList();
     expect(tabs, [
       'Overview',
-      'Basic profile',
       'Immigration profile',
       'Jobs',
       'Documents',
@@ -71,12 +71,6 @@ void main() {
       (tester) async {
     final container = await pumpApp(tester);
     await go(tester, container, Routes.profile);
-
-    final tab = find.widgetWithText(Tab, 'Basic profile');
-    await tester.ensureVisible(tab);
-    await tester.pumpAndSettle();
-    await tester.tap(tab);
-    await tester.pumpAndSettle();
 
     expect(find.text('From'), findsOneWidget);
     expect(find.text('United Kingdom'), findsOneWidget);

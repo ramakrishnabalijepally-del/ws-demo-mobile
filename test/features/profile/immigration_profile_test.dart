@@ -43,8 +43,8 @@ void main() {
   }
 
   testWidgets(
-      'profile has Basic and Immigration profile tabs, CRS under '
-      'Immigration', (tester) async {
+      'the basic profile is on Overview, the CRS under Immigration '
+      'profile', (tester) async {
     final container = await pumpApp(tester);
     // The score is asked for, not served; this test is about what the tab
     // shows once it exists.
@@ -52,11 +52,11 @@ void main() {
     await go(tester, container, Routes.profile);
 
     expect(find.text('Basic profile'), findsWidgets);
+    expect(find.widgetWithText(Tab, 'Basic profile'), findsNothing);
     expect(find.text('Immigration profile'), findsWidgets);
-    // Not on the basic tab any more.
-    expect(find.text('Your CRS score'), findsNothing);
+    expect(find.text('CRS score'), findsNothing);
 
-    // Five tabs scroll on a phone, so bring this one on screen before tapping.
+    // Tabs scroll on a phone, so bring this one on screen before tapping.
     final tab = find.widgetWithText(Tab, 'Immigration profile');
     await tester.ensureVisible(tab);
     await tester.pumpAndSettle();
@@ -68,7 +68,7 @@ void main() {
     expect(find.text('Status in Canada'), findsOneWidget);
     expect(find.text('Visitor'), findsOneWidget);
     expect(find.text('Family in Canada'), findsOneWidget);
-    expect(find.text('Your CRS score'), findsOneWidget);
+    expect(find.text('CRS score'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -105,8 +105,8 @@ void main() {
   });
 
   testWidgets(
-      'without a score, the slot says where to get one and takes '
-      'you there', (tester) async {
+      'without a score, the slot says where to get one and cannot '
+      'generate it', (tester) async {
     final container = await pumpApp(tester, size: const Size(390, 4000));
     await go(tester, container, Routes.profile);
 
@@ -116,35 +116,18 @@ void main() {
     await tester.tap(tab);
     await tester.pumpAndSettle();
 
-    // The score is generated in Immigration and nowhere else, but a slot that
-    // only *said* so left people hunting for it. It names the place and
-    // carries the button that goes there.
+    // Generated in Immigration and nowhere else: the tile names the place
+    // and offers no button of its own.
     expect(container.read(crsRevealedProvider), isFalse);
-    expect(
-      find.widgetWithText(WsScorePrompt, 'Your CRS score'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('calculates it in Immigration'), findsOneWidget);
-
-    final action = find.descendant(
-      of: find.widgetWithText(WsScorePrompt, 'Your CRS score'),
-      matching: find.widgetWithText(WsPrimaryButton, 'Get my CRS score'),
-    );
-    expect(action, findsOneWidget);
-
-    await tester.ensureVisible(action);
-    await tester.pumpAndSettle();
-    await tester.tap(action);
-    await tester.pumpAndSettle();
-
-    // It lands on the CRS status screen in Immigration, where the score is
-    // actually produced.
-    expect(find.byType(CrsOverviewScreen), findsOneWidget);
+    expect(find.text('Not generated yet'), findsOneWidget);
+    expect(find.text('Generate it in Immigration.'), findsOneWidget);
+    expect(find.text('Get my CRS score'), findsNothing);
+    expect(find.byType(WsPrimaryButton), findsNothing);
   });
 
   testWidgets(
-      'once there is a score, the slot is a readout with nothing to '
-      'press', (tester) async {
+      'once there is a score, the tile shows it and opens the '
+      'breakdown', (tester) async {
     final container = await pumpApp(tester, size: const Size(390, 4000));
     container.read(crsRevealedProvider.notifier).reveal();
     await go(tester, container, Routes.profile);
@@ -155,21 +138,34 @@ void main() {
     await tester.tap(tab);
     await tester.pumpAndSettle();
 
-    // The answers behind the number are already on this tab, so there is
-    // nowhere left to send anyone.
-    expect(
-      find.widgetWithText(WsScorePrompt, 'Your CRS score'),
-      findsNothing,
-    );
-    expect(find.byType(WsScoreCard), findsOneWidget);
+    final total = container.read(crsResultProvider).total;
+    final score = find.textContaining('$total', findRichText: true);
+    expect(score, findsOneWidget);
     expect(find.text('Get my CRS score'), findsNothing);
-    expect(
-      find.descendant(
-        of: find.byType(WsScoreCard),
-        matching: find.byType(WsPrimaryButton),
-      ),
-      findsNothing,
-    );
+
+    await tester.ensureVisible(score);
+    await tester.pumpAndSettle();
+    await tester.tap(score);
+    await tester.pumpAndSettle();
+    expect(find.byType(CrsBreakdownScreen), findsOneWidget);
+  });
+
+  testWidgets('each score heading folds its description away', (tester) async {
+    final container = await pumpApp(tester, size: const Size(390, 4000));
+    await go(tester, container, Routes.profile);
+
+    final tab = find.widgetWithText(Tab, 'Immigration profile');
+    await tester.ensureVisible(tab);
+    await tester.pumpAndSettle();
+    await tester.tap(tab);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Federal score'), findsOneWidget);
+    expect(find.text('PNP score'), findsOneWidget);
+    expect(find.textContaining('Comprehensive Ranking'), findsNothing);
+    await tester.tap(find.text('What is this?').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Comprehensive Ranking'), findsOneWidget);
   });
 
   testWidgets('family chosen in Edit profile moves the CRS score',
@@ -213,35 +209,27 @@ void main() {
   testWidgets(
       'Immigration tab groups the CRS score and a PNP score per '
       'province', (tester) async {
-    final container = await pumpApp(tester, size: const Size(360, 1400));
-    container.read(pnpRevealedProvider.notifier).reveal();
+    final container = await pumpApp(tester, size: const Size(360, 1600));
+    container.read(pnpRevealedProvider.notifier)
+      ..reveal('AB')
+      ..reveal('SK');
     await go(tester, container, Routes.immigration);
 
-    expect(find.text('Federal programs'), findsOneWidget);
-    expect(find.text('PNP programs'), findsOneWidget);
-    // CRS sits under the federal group, PNP scores under the provincial one.
+    expect(find.text('Federal score'), findsOneWidget);
+    expect(find.text('PNP score'), findsOneWidget);
+    // The program lists are gone; only the two scores remain.
+    expect(find.text('Where you stand'), findsNothing);
+    expect(find.text('Provincial Nominee Programs'), findsNothing);
     expect(
       tester.getTopLeft(find.text('Your CRS score')).dy,
-      lessThan(tester.getTopLeft(find.text('PNP programs')).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('PNP scores')).dy,
-      greaterThan(tester.getTopLeft(find.text('PNP programs')).dy),
+      lessThan(tester.getTopLeft(find.text('PNP score')).dy),
     );
     // The CRS score card is the way in; there is no separate Predictor row.
     expect(find.text('CRS Predictor'), findsNothing);
-    // The provincial group sits below the federal one; bring it on screen.
-    await tester.ensureVisible(find.text('PNP scores'));
-    await tester.pumpAndSettle();
     for (final score in container.read(pnpScoresProvider)) {
-      expect(
-        find.text(score.province),
-        findsWidgets,
-        reason: score.province,
-      );
+      expect(find.text(score.province), findsWidgets, reason: score.province);
     }
 
-    // The third card sits past the right edge of a 360 dp phone.
     await tester.ensureVisible(find.text('Saskatchewan').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Saskatchewan').first);
@@ -266,13 +254,15 @@ void main() {
     await tester.tap(tab);
     await tester.pumpAndSettle();
 
-    // Renamed: the section owns a score, it does not only predict one. It
-    // sits under Federal programs, as on the Immigration tab.
+    // The section owns a score, it does not only predict one. It sits under
+    // Federal score, and the federal program list is gone from this tab.
     expect(find.text('CRS score'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Federal programs')).dy,
+      tester.getTopLeft(find.text('Federal score')).dy,
       lessThan(tester.getTopLeft(find.text('CRS score')).dy),
     );
+    expect(find.text('Federal programs'), findsNothing);
+    expect(find.text('Where you stand'), findsNothing);
     expect(find.text('CRS Predictor'), findsNothing);
     // The questions are on this tab, so nothing sends the reader to a
     // separate copy of them.
@@ -289,11 +279,6 @@ void main() {
     }
     expect(find.text(ProfileSection.additional.title), findsNothing);
 
-    // The score is a readout: no tap target, so nowhere to go from it.
-    final score = tester.widget<WsScoreCard>(
-      find.widgetWithText(WsScoreCard, 'Your CRS score'),
-    );
-    expect(score.onTap, isNull);
     expect(tester.takeException(), isNull);
   });
 
@@ -336,7 +321,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final before = container.read(crsResultProvider).total;
-    expect(find.text('$before'), findsWidgets);
+    expect(find.textContaining('$before', findRichText: true), findsWidgets);
 
     // An answer changed anywhere moves the number on this tab.
     final candidate = container.read(candidateProvider);
@@ -351,7 +336,7 @@ void main() {
 
     final after = container.read(crsResultProvider).total;
     expect(after, greaterThan(before));
-    expect(find.text('$after'), findsWidgets);
+    expect(find.textContaining('$after', findRichText: true), findsWidgets);
   });
 
   testWidgets('every fact value ends flush with the card content edge',

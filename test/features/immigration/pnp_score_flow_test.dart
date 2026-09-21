@@ -47,41 +47,45 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// From the PNP status screen: answers the provincial factors — a cousin in
-  /// Saskatchewan, no other family, no Canadian work, no job offer. The mock
+  /// From Saskatchewan's status screen: answers its factors — a cousin
+  /// there, no immediate family, no work there, no job offer. The mock
   /// candidate has no Canadian study, so that question is not asked.
-  Future<void> answerProvincialFactors(WidgetTester tester) async {
-    await tester.tap(find.text('Provincial factors'));
+  Future<void> answerSaskatchewan(WidgetTester tester) async {
+    await tester.tap(find.text('Saskatchewan factors'));
     await tester.pumpAndSettle();
     expect(find.text('Study in Canada'), findsNothing);
 
-    await tapVisible(tester, find.text('None of these').first);
-    // Saskatchewan in the second family question.
-    await tapVisible(tester, find.text('Saskatchewan').at(1));
-    await tapVisible(tester, find.text('I have not worked in Canada'));
-    await tapVisible(tester, find.text('No, or somewhere else'));
+    // Four yes/no questions in order: immediate family, extended family,
+    // work, job offer.
+    await tapVisible(tester, find.text('No').at(0));
+    await tapVisible(tester, find.text('Yes').at(1));
+    await tapVisible(tester, find.text('No').at(2));
+    await tapVisible(tester, find.text('No').at(3));
     await tapVisible(tester, find.widgetWithText(WsPrimaryButton, 'Save'));
     // Let the "Saved" snackbar go, or it sits over the status screen button.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   }
 
-  WsPrimaryButton pnpButton(WidgetTester tester) =>
+  WsPrimaryButton skButton(WidgetTester tester) =>
       tester.widget<WsPrimaryButton>(
-        find.widgetWithText(WsPrimaryButton, 'Get my PNP scores'),
+        find.widgetWithText(WsPrimaryButton, 'Get my Saskatchewan score'),
       );
 
-  testWidgets('a fresh session shows the way to the PNP scores, not the bar',
+  String skStatus() => Routes.withId(Routes.pnpStatus, 'SK');
+
+  testWidgets('a fresh session shows a card per province, none generated',
       (tester) async {
     final container = await pumpApp(tester);
     await go(tester, container, Routes.immigration);
 
-    expect(container.read(pnpRevealedProvider), isFalse);
-    expect(
-      find.widgetWithText(WsScorePrompt, 'Your PNP scores'),
-      findsOneWidget,
-    );
-    expect(find.text('Saskatchewan'), findsNothing);
+    expect(container.read(pnpRevealedProvider), isEmpty);
+    expect(find.byType(PnpProvinceGrid), findsOneWidget);
+    // Six cards, then the rest behind "Show all".
+    expect(find.text('Get score'), findsNWidgets(4));
+    expect(find.text('Quebec'), findsNothing);
+    await tapVisible(tester, find.textContaining('Show all provinces'));
+    expect(find.text('Quebec'), findsOneWidget);
   });
 
   testWidgets(
@@ -97,11 +101,10 @@ void main() {
     );
     await go(tester, container, Routes.immigration);
 
-    await tester.tap(find.text('Get my PNP scores'));
-    await tester.pumpAndSettle();
-    // Work experience and the provincial factors are both open.
+    await tapVisible(tester, find.text('Saskatchewan'));
+    // Work experience and Saskatchewan's own factors are both open.
     expect(find.text('3 of 5 filled in'), findsOneWidget);
-    expect(pnpButton(tester).onPressed, isNull);
+    expect(skButton(tester).onPressed, isNull);
 
     // The missing row opens the profile's own section form.
     await tester.tap(find.text('Work experience'));
@@ -114,31 +117,39 @@ void main() {
     notifier.update(candidate);
     await tester.pumpAndSettle();
     expect(find.text('4 of 5 filled in'), findsOneWidget);
-    await answerProvincialFactors(tester);
+    await answerSaskatchewan(tester);
     expect(find.text('Everything is filled in'), findsOneWidget);
-    expect(pnpButton(tester).onPressed, isNotNull);
+    expect(skButton(tester).onPressed, isNotNull);
   });
 
-  testWidgets('getting the scores returns to the tab with the bar showing',
+  testWidgets('getting one province reveals that province and no other',
       (tester) async {
     final container = await pumpApp(tester);
     await go(tester, container, Routes.immigration);
 
-    await tester.tap(find.text('Get my PNP scores'));
-    await tester.pumpAndSettle();
-    await answerProvincialFactors(tester);
-    await tester.tap(find.text('Get my PNP scores'));
+    await tapVisible(tester, find.text('Saskatchewan'));
+    await answerSaskatchewan(tester);
+    await tester.tap(find.text('Get my Saskatchewan score'));
     await tester.pumpAndSettle();
 
-    expect(container.read(pnpRevealedProvider), isTrue);
+    expect(container.read(pnpRevealedProvider), {'SK'});
     expect(find.byType(ImmigrationScreen), findsOneWidget);
-    for (final score in container.read(pnpScoresProvider).take(2)) {
-      expect(find.text(score.province), findsWidgets, reason: score.province);
-    }
+    final sk = container
+        .read(pnpScoresProvider)
+        .firstWhere((score) => score.code == 'SK');
+    expect(
+      find.textContaining('${sk.total}', findRichText: true),
+      findsWidgets,
+    );
+    // Alberta, British Columbia and Manitoba still wait to be asked for.
+    expect(find.text('Get score'), findsNWidgets(3));
+
+    // The generated card opens its breakdown.
+    await tapVisible(tester, find.text('Saskatchewan'));
+    expect(find.text('Not counted yet'), findsOneWidget);
   });
 
-  testWidgets('provincial factors score on that province\'s grid',
-      (tester) async {
+  testWidgets("a province's factors score on its own grid", (tester) async {
     final container = await pumpApp(tester);
     int connection() => container
         .read(pnpScoresProvider)
@@ -148,40 +159,40 @@ void main() {
         .points;
     expect(connection(), 0);
 
-    await go(tester, container, Routes.pnpStatus);
-    await answerProvincialFactors(tester);
+    await go(tester, container, skStatus());
+    await answerSaskatchewan(tester);
 
     // A cousin in Saskatchewan is 20 of the 30 connection points.
     expect(connection(), 20);
-    expect(
-      container.read(candidateProvider).crs.provincial.extendedFamily,
-      {ProvinceTie.saskatchewan},
-    );
+    final f = container.read(candidateProvider).crs.provincial;
+    expect(f.extendedFamily, {ProvinceTie.saskatchewan});
+    expect(f.answeredFor, {ProvinceTie.saskatchewan});
   });
 
   testWidgets('follow-up questions appear only when they change a score',
       (tester) async {
     final container = await pumpApp(tester);
-    await go(tester, container, Routes.pnpTies);
+    await go(tester, container, Routes.withId(Routes.pnpTies, 'SK'));
 
-    const skYear = 'Was your Saskatchewan work 12 months or more, in the '
-        'last five years?';
+    const skYear = 'Was it 12 months or more, in the last five years?';
     expect(find.text(skYear), findsNothing);
-    await tapVisible(tester, find.text('Saskatchewan').at(2));
+    // The third question: worked in Saskatchewan.
+    await tapVisible(tester, find.text('Yes').at(2));
     expect(find.text(skYear), findsOneWidget);
 
+    await go(tester, container, Routes.withId(Routes.pnpTies, 'BC'));
     const wage = 'Hourly wage of the job offer (CAD)';
     expect(find.text(wage), findsNothing);
-    await tapVisible(tester, find.text('British Columbia'));
+    await tapVisible(tester, find.text('Yes').last);
     expect(find.text(wage), findsOneWidget);
   });
 
-  testWidgets('the profile tab carries the PNP scores under PNP programs',
+  testWidgets('the profile tab shows the PNP scores but cannot generate them',
       (tester) async {
     final container = await pumpApp(tester);
     // Taller than pumpApp's default: the PNP group is at the foot of the tab.
     tester.view.physicalSize = const Size(390, 5000);
-    container.read(pnpRevealedProvider.notifier).reveal();
+    container.read(pnpRevealedProvider.notifier).reveal('SK');
     await go(tester, container, Routes.profile);
 
     final tab = find.widgetWithText(Tab, 'Immigration profile');
@@ -190,14 +201,20 @@ void main() {
     await tester.tap(tab);
     await tester.pumpAndSettle();
 
-    expect(find.text('PNP programs'), findsOneWidget);
+    expect(find.text('PNP score'), findsOneWidget);
+    expect(find.text('Federal programs'), findsNothing);
     expect(
-      tester.getTopLeft(find.text('PNP programs')).dy,
-      greaterThan(tester.getTopLeft(find.text('Federal programs')).dy),
+      tester.getTopLeft(find.text('PNP score')).dy,
+      greaterThan(tester.getTopLeft(find.text('Federal score')).dy),
     );
     final sk = container
         .read(pnpScoresProvider)
         .firstWhere((score) => score.code == 'SK');
-    expect(find.text('${sk.total} / ${sk.maximum}'), findsOneWidget);
+    expect(
+      find.textContaining('${sk.total}', findRichText: true),
+      findsWidgets,
+    );
+    expect(find.text('Get score'), findsNothing);
+    expect(find.text('Generate in Immigration'), findsNWidgets(3));
   });
 }

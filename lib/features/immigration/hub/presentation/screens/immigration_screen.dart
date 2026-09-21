@@ -5,18 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/controllers/crs_controller.dart';
-import '../../../controllers/pnp_status.dart';
 import '../../../../../shared/models/ws_module.dart';
 import '../../../../../shared/shared.dart';
 import '../../../../../shared/utils/crs_calculator.dart';
 import '../../../data/mock_immigration.dart';
-import '../widgets/pnp_scores_bar.dart';
+import '../../../widgets/pnp_province_grid.dart';
 
 /// J1 — the Immigration tab.
 ///
 /// Design system Pattern B — *assess, then disclose*. Grouped the way IRCC
-/// splits the routes: **Federal programs** (Express Entry, scored on the CRS)
-/// first, then **PNP programs** (each province on its own grid).
+/// splits the routes: **Federal score** (Express Entry, scored on the CRS)
+/// first, then **PNP score** (each province on its own grid).
 class ImmigrationScreen extends ConsumerWidget {
   const ImmigrationScreen({super.key});
 
@@ -25,8 +24,6 @@ class ImmigrationScreen extends ConsumerWidget {
     final crs = ref.watch(crsResultProvider);
     final verdict = crsVerdict(crs.total);
     final revealed = ref.watch(crsRevealedProvider);
-    final pnpScores = ref.watch(pnpScoresProvider);
-    final pnpRevealed = ref.watch(pnpRevealedProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -47,7 +44,7 @@ class ImmigrationScreen extends ConsumerWidget {
               children: [
                 const _GroupHeading(
                   eyebrow: 'Express Entry',
-                  title: 'Federal programs',
+                  title: 'Federal score',
                   body: 'Scored on the Comprehensive Ranking System (CRS).',
                 ),
                 const SizedBox(height: WsSpacing.lg),
@@ -66,6 +63,7 @@ class ImmigrationScreen extends ConsumerWidget {
                     contextLine: mockRecentDraws,
                     brandFill: true,
                     showDisclaimer: true,
+                    mark: const WsProvinceMark.canada(size: 44),
                     onTap: () => context.push(Routes.crsResult),
                   )
                 else
@@ -76,80 +74,23 @@ class ImmigrationScreen extends ConsumerWidget {
                     body: 'WorkSettle works it out from your profile using '
                         'the points IRCC publishes, and shows what would '
                         'move it.',
+                    mark: const WsProvinceMark.canada(size: 44),
                     actionLabel: 'Get my CRS score',
                     // Always the status screen first: it says what the score
                     // is built from and what is still missing.
                     onPressed: () => context.push(Routes.crsOverview),
                   ),
                 const SizedBox(height: WsSpacing.xxl),
-                _SectionHeading(
-                  title: 'Where you stand',
-                  action: 'All federal programs',
-                  onAction: () => context.push(Routes.programs),
-                ),
-                const SizedBox(height: WsSpacing.md),
-                for (final program in mockFederalPrograms.take(3))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: WsSpacing.md),
-                    child: _ProgramCard(program: program),
-                  ),
-                const SizedBox(height: WsSpacing.xxl),
                 Divider(color: context.colors.outlineVariant, height: 1),
                 const SizedBox(height: WsSpacing.xxl),
                 const _GroupHeading(
                   eyebrow: 'Provincial Nominee Programs',
-                  title: 'PNP programs',
-                  body: "Scored on each province's own points grid.",
+                  title: 'PNP score',
+                  body: "Scored on each province's own points grid. Get one "
+                      'province at a time; tap a score to see what counts.',
                 ),
                 const SizedBox(height: WsSpacing.lg),
-                _SectionHeading(
-                  title: 'PNP scores',
-                  action: 'All provinces',
-                  onAction: () => context.push(Routes.pnpProvinces),
-                ),
-                if (pnpRevealed) ...[
-                  const SizedBox(height: WsSpacing.xs),
-                  Text(
-                    "Your points on each province's own grid, from your "
-                    'profile. Tap one to see what counts.',
-                    style: context.text.bodySmall
-                        ?.copyWith(color: context.ws.caption),
-                  ),
-                ] else ...[
-                  const SizedBox(height: WsSpacing.md),
-                  WsScorePrompt(
-                    icon: Icons.map_rounded,
-                    title: 'Your PNP scores',
-                    supporting: 'Provincial points grids',
-                    body: 'WorkSettle works out your points on the Alberta, '
-                        'British Columbia, Saskatchewan and Manitoba grids '
-                        'from your profile.',
-                    actionLabel: 'Get my PNP scores',
-                    onPressed: () => context.push(Routes.pnpStatus),
-                  ),
-                ],
-                const SizedBox(height: WsSpacing.md),
-              ],
-            ),
-          ),
-          // Edge to edge, so cards scroll under the gutter rather than being
-          // clipped at it.
-          if (pnpRevealed) PnpScoresBar(scores: pnpScores),
-          Padding(
-            padding: WsSpacing.gutter,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: WsSpacing.lg),
-                WsCard(
-                  padding: EdgeInsets.zero,
-                  child: WsListRow(
-                    leading: const WsIconTile(icon: Icons.map_rounded),
-                    title: 'Provincial Nominee Programs',
-                    subtitle: 'Pick a province, then a stream',
-                    onTap: () => context.push(Routes.pnpProvinces),
-                  ),
-                ),
+                const PnpProvinceGrid(),
               ],
             ),
           ),
@@ -189,68 +130,6 @@ class _GroupHeading extends StatelessWidget {
           Text(
             body,
             style: context.text.bodySmall?.copyWith(color: context.ws.caption),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({
-    required this.title,
-    required this.action,
-    required this.onAction,
-  });
-
-  final String title;
-  final String action;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Text(title, style: context.text.titleMedium)),
-        WsLink(label: action, underline: false, onPressed: onAction),
-      ],
-    );
-  }
-}
-
-class _ProgramCard extends StatelessWidget {
-  const _ProgramCard({required this.program});
-
-  final FederalProgram program;
-
-  @override
-  Widget build(BuildContext context) {
-    return WsCard(
-      onTap: () => context.push(Routes.programs),
-      child: Row(
-        children: [
-          const WsProvinceMark.canada(),
-          const SizedBox(width: WsSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(program.name, style: context.text.titleMedium),
-                const SizedBox(height: 2),
-                Text(
-                  program.summary,
-                  style: context.text.bodySmall
-                      ?.copyWith(color: context.ws.caption),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: WsSpacing.md),
-          WsVerdictChip(
-            verdict:
-                program.eligible ? WsVerdict.eligible : WsVerdict.potential,
-            label: program.eligible ? 'Eligible' : 'Potential',
           ),
         ],
       ),

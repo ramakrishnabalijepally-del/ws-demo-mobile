@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/data/mock_candidate.dart';
 import '../../../shared/models/profile_section.dart';
+import '../../../shared/models/provincial_factors.dart';
 
 /// The profile sections the provincial points grids read: age, education,
 /// language and work. Marital status, a spouse and a nomination do not score
@@ -29,22 +30,28 @@ final pnpCompletionProvider = Provider<ProfileCompletion>((ref) {
   );
 });
 
-/// Whether the provincial factors are answered — family, work and study in a
-/// province and a job offer, the PNP inputs that are not a profile section.
-final pnpTiesAnsweredProvider = Provider<bool>(
-  (ref) => ref.watch(candidateProvider).crs.provincialFactorsAnswered,
-);
+/// Whether one province's own questions are answered — family, work and
+/// study there, and a job offer. Keyed by the province's two-letter code.
+final pnpFactorsAnsweredProvider = Provider.family<bool, String>((ref, code) {
+  final province = ProvinceTie.forCode(code);
+  return province != null &&
+      ref.watch(candidateProvider).crs.provincial.isAnsweredFor(province);
+});
 
-/// Whether the candidate has asked for their PNP scores yet — asked for, not
-/// served, for the same reason as the CRS score (`crsRevealedProvider`).
+/// The provinces whose PNP score the candidate has asked for, by code.
+///
+/// Each province is generated on its own: asking for Alberta's score does not
+/// reveal Manitoba's. Asked for, not served, for the same reason as the CRS
+/// score (`crsRevealedProvider`). Once revealed, a score follows the profile
+/// live — change an answer and the number moves.
 // TODO(backend): session-only, so it resets on every launch.
-final pnpRevealedProvider = NotifierProvider<PnpRevealed, bool>(
+final pnpRevealedProvider = NotifierProvider<PnpRevealed, Set<String>>(
   PnpRevealed.new,
 );
 
-class PnpRevealed extends Notifier<bool> {
+class PnpRevealed extends Notifier<Set<String>> {
   @override
-  bool build() => false;
+  Set<String> build() => const {};
 
-  void reveal() => state = true;
+  void reveal(String code) => state = {...state, code};
 }

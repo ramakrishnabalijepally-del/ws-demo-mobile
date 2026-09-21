@@ -32,10 +32,15 @@ class WsScoreCard extends StatelessWidget {
     this.brandIcon = false,
     this.onTap,
     this.showDisclaimer = false,
+    this.mark,
     super.key,
   });
 
   final IconData icon;
+
+  /// Drawn in place of the icon tile — a flag for a score that belongs to a
+  /// country or province. Same 44 dp footprint, so nothing else moves.
+  final Widget? mark;
   final String title;
 
   /// The line under the title.
@@ -75,7 +80,7 @@ class WsScoreCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              WsIconTile(icon: icon, brand: brandIcon),
+              mark ?? WsIconTile(icon: icon, brand: brandIcon),
               const SizedBox(width: WsSpacing.md),
               Expanded(
                 child: Column(
@@ -308,6 +313,7 @@ class WsScorePrompt extends StatelessWidget {
     this.onPressed,
     this.supporting,
     this.note,
+    this.mark,
     super.key,
   }) : assert(
           (actionLabel == null) == (onPressed == null),
@@ -316,6 +322,10 @@ class WsScorePrompt extends StatelessWidget {
         );
 
   final IconData icon;
+
+  /// Drawn in place of the icon tile — a flag for a score that belongs to a
+  /// country or province. Same 44 dp footprint, so nothing else moves.
+  final Widget? mark;
   final String title;
   final String? supporting;
 
@@ -345,7 +355,7 @@ class WsScorePrompt extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              WsIconTile(icon: icon),
+              mark ?? WsIconTile(icon: icon),
               const SizedBox(width: WsSpacing.md),
               Expanded(
                 child: Column(

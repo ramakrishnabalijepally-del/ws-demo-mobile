@@ -18,7 +18,7 @@ enum WsHero {
   /// A man holding a signed contract, thumbs up. The outcome.
   success('assets/images/hero_success.jpg'),
 
-  // TODO(assets): the four below are Unsplash demo stand-ins, not client
+  // TODO(assets): the three below are Unsplash demo stand-ins, not client
   // photography — replace before release.
 
   /// A traveller with a suitcase at an airport window, a plane taking off.
@@ -33,10 +33,6 @@ enum WsHero {
   /// candidate's own profile — it pairs with the onboarding checklist card.
   userProfile('assets/images/hero_user_profile.jpg'),
 
-  /// A teacher and students with raised hands. Language support — a wide shot,
-  /// so it serves the home banner directly.
-  language('assets/images/hero_language.jpg'),
-
   // Wide crops for the home banners (about 2.8:1, glyph over the left third).
   // Deliberately different photographs from onboarding, and chosen so the
   // section reads at a glance with the subject centre-right.
@@ -45,7 +41,14 @@ enum WsHero {
   tileImmigration('assets/images/tile_immigration.jpg'),
 
   /// A handshake across an interview desk, clipboard and laptop. Jobs.
-  tileJobs('assets/images/tile_jobs.jpg');
+  tileJobs('assets/images/tile_jobs.jpg'),
+
+  /// Porches and a maple along a quiet residential street in Toronto's
+  /// Beaches. Settlement — finding a home, not the paperwork before it.
+  // TODO(assets): a demo stand-in — "Beaches Houses Toronto 2010" from
+  // Wikimedia Commons, CC BY-SA, cropped. Needs attribution or replacing with
+  // client photography before release.
+  tileSettlement('assets/images/tile_settlement.jpg');
 
   const WsHero(this.path);
 

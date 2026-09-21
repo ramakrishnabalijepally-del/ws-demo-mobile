@@ -198,9 +198,6 @@ class CrsProfile {
   bool get studiedInCanada =>
       canadianEducation != null && canadianEducation != CanadianEducation.none;
 
-  bool get provincialFactorsAnswered =>
-      provincial.isAnswered(studiedInCanada: studiedInCanada);
-
   /// IRCC scores "with a spouse" only when the partner is coming to Canada and
   /// is not already a citizen or permanent resident. Otherwise the candidate is
   /// scored as a single applicant.
