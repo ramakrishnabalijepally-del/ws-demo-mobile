@@ -31,6 +31,13 @@ import 'shell_scaffold.dart';
 ///    avatar in every tab rather than from the bar; voice mode because it
 ///    inverts the whole screen; the paywall because it is reached by touching a
 ///    locked feature and is never a destination.
+///
+///    **Detail flows open here too**: the CRS and PNP flows, job details,
+///    applications, saved jobs, messages and the assistant chat. Each is
+///    reachable from more than one place — Profile above all — and a screen
+///    pushed from Profile into a tab's own stack either did nothing or jumped
+///    tabs with no way back. On the root navigator, Back always returns to the
+///    screen it was opened from.
 final routerProvider = Provider<GoRouter>((ref) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -219,6 +226,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'crs',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const CrsOverviewScreen(),
                     routes: [
                       // The profile's own section form, composed here rather
@@ -226,6 +234,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       // answers, reachable from both places.
                       GoRoute(
                         path: 'section/:section',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => ProfileSectionScreen(
                           sectionId: state.pathParameters['section']!,
                           fromCrs: true,
@@ -233,6 +242,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       GoRoute(
                         path: 'calculating',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => CrsCalculatingScreen(
                           toResult:
                               state.uri.queryParameters['result'] != 'false',
@@ -240,10 +250,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       GoRoute(
                         path: 'result',
+                        parentNavigatorKey: rootKey,
                         builder: (_, __) => const CrsResultScreen(),
                         routes: [
                           GoRoute(
                             path: 'breakdown',
+                            parentNavigatorKey: rootKey,
                             builder: (_, __) => const CrsBreakdownScreen(),
                           ),
                         ],
@@ -252,6 +264,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'pnp-scores/:province',
+                    parentNavigatorKey: rootKey,
                     builder: (_, state) => PnpStatusScreen(
                       provinceCode: state.pathParameters['province']!,
                     ),
@@ -260,6 +273,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       // section form above.
                       GoRoute(
                         path: 'factors',
+                        parentNavigatorKey: rootKey,
                         // Keyed, so moving from one province's form to another
                         // starts fresh rather than keeping the first's answers.
                         builder: (_, state) => ProvincialTiesScreen(
@@ -271,16 +285,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'pnp',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const PnpProvincesScreen(),
                     routes: [
                       GoRoute(
                         path: ':province',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => PnpStreamsScreen(
                           provinceCode: state.pathParameters['province']!,
                         ),
                         routes: [
                           GoRoute(
                             path: ':stream',
+                            parentNavigatorKey: rootKey,
                             builder: (_, state) => PnpStreamDetailScreen(
                               provinceCode: state.pathParameters['province']!,
                               streamName: state.pathParameters['stream']!,
@@ -312,6 +329,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'chat',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const AssistantScreen(),
                   ),
                   GoRoute(
@@ -355,18 +373,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'detail/:id',
+                    parentNavigatorKey: rootKey,
                     builder: (_, state) => JobDetailsScreen(
                       jobId: state.pathParameters['id']!,
                     ),
                     routes: [
                       GoRoute(
                         path: 'apply',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => JobApplyScreen(
                           jobId: state.pathParameters['id']!,
                         ),
                         routes: [
                           GoRoute(
                             path: 'result',
+                            parentNavigatorKey: rootKey,
                             builder: (_, state) {
                               final jobId = state.pathParameters['id']!;
                               // ?status=failed reaches F6; anything else is F5.
@@ -382,10 +403,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'applications',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const ApplicationsScreen(),
                     routes: [
                       GoRoute(
                         path: ':id',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => ApplicationDetailScreen(
                           applicationId: state.pathParameters['id']!,
                         ),
@@ -394,20 +417,24 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'saved',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const SavedJobsScreen(),
                   ),
                   GoRoute(
                     path: 'messages',
+                    parentNavigatorKey: rootKey,
                     builder: (_, __) => const ChatListScreen(),
                     routes: [
                       GoRoute(
                         path: ':id',
+                        parentNavigatorKey: rootKey,
                         builder: (_, state) => ChatThreadScreen(
                           threadId: state.pathParameters['id']!,
                         ),
                         routes: [
                           GoRoute(
                             path: 'call',
+                            parentNavigatorKey: rootKey,
                             builder: (_, state) => CallScreen(
                               threadId: state.pathParameters['id']!,
                             ),

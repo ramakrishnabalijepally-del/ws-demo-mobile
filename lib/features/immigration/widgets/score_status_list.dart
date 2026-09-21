@@ -86,9 +86,7 @@ class _Group extends StatelessWidget {
                     : Icons.radio_button_unchecked_rounded,
                 size: WsIconSize.tick,
                 semanticLabel: item.done ? 'Complete' : 'Not filled in',
-                color: item.done
-                    ? context.colors.onSurface
-                    : context.ws.placeholder,
+                color: item.done ? context.ws.complete : context.ws.placeholder,
               ),
               onTap: item.onTap,
             ),

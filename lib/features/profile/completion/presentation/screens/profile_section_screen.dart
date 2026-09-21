@@ -85,15 +85,20 @@ class _ProfileSectionScreenState extends ConsumerState<ProfileSectionScreen> {
     // The number is only named once it has been asked for; before that, a
     // save would hand the reader the score without the question.
     final revealed = ref.read(crsRevealedProvider);
+    // Additional factors is asked for the CRS score only and never shown on
+    // the profile, so saying it went "to your profile" sent people looking
+    // for an answer that is not there.
+    final onProfile = _section != ProfileSection.additional;
+    final saved = onProfile ? 'Saved to your profile.' : 'Saved.';
     final messenger = ScaffoldMessenger.of(context);
     context.pop();
     messenger.showSnackBar(
       SnackBar(
         content: Text(
           !revealed
-              ? 'Saved to your profile.'
+              ? saved
               : widget.fromCrs
-                  ? 'Saved to your profile. Your CRS score is $score.'
+                  ? '$saved Your CRS score is $score.'
                   : 'Saved. Your CRS score in Immigration is now $score.',
         ),
       ),
@@ -139,11 +144,14 @@ class _ProfileSectionScreenState extends ConsumerState<ProfileSectionScreen> {
           ),
           const SizedBox(height: WsSpacing.lg),
           WsSyncNote(
-            message: widget.fromCrs
-                ? 'These answers are saved to your profile, so you only enter '
-                    'them once.'
-                : 'These answers also calculate your CRS score in '
-                    'Immigration.',
+            message: section == ProfileSection.additional
+                ? 'This answer counts toward your CRS score. It is not shown '
+                    'on your profile.'
+                : widget.fromCrs
+                    ? 'These answers are saved to your profile, so you only '
+                        'enter them once.'
+                    : 'These answers also calculate your CRS score in '
+                        'Immigration.',
           ),
           const SizedBox(height: WsSpacing.xxl),
           SectionForm(

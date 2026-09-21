@@ -59,7 +59,7 @@ class HelpScreen extends StatelessWidget {
           WsSecondaryButton(
             label: 'Ask the assistant',
             icon: Icons.forum_outlined,
-            onPressed: () => context.push(Routes.assistant),
+            onPressed: () => context.push(Routes.assistantChat),
           ),
         ],
       ),

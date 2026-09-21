@@ -54,10 +54,11 @@ void main() {
         .read(routerProvider)
         .go(Routes.withId(Routes.crsSection, 'additional'));
     await tester.pumpAndSettle();
-    // The form says where the answers are going.
+    // The nomination counts toward the CRS but is never shown on the
+    // profile, so the form says so rather than claiming it is saved there.
     expect(
-      find.text('These answers are saved to your profile, so you only enter '
-          'them once.'),
+      find.text('This answer counts toward your CRS score. It is not shown '
+          'on your profile.'),
       findsOneWidget,
     );
 
@@ -67,8 +68,11 @@ void main() {
     expect(container.read(candidateProvider).crs.provincialNomination, isTrue);
     final after = container.read(crsResultProvider).total;
     expect(after, before + 600);
-    // The score has not been asked for yet, so the save does not name it.
-    expect(find.text('Saved to your profile.'), findsOneWidget);
+    // The score has not been asked for yet, so the save does not name it —
+    // and the nomination is not shown on the profile, so it does not claim
+    // to have gone there.
+    expect(find.text('Saved.'), findsOneWidget);
+    expect(find.textContaining('to your profile'), findsNothing);
     expect(find.textContaining('$after'), findsNothing);
 
     // Opening the same section from Profile shows the answer already there.
@@ -96,8 +100,11 @@ void main() {
         .read(routerProvider)
         .go(Routes.withId(Routes.profileSection, 'additional'));
     await tester.pumpAndSettle();
+    // The nomination counts toward the CRS but is never shown on the
+    // profile, so the form says so rather than claiming it is saved there.
     expect(
-      find.text('These answers also calculate your CRS score in Immigration.'),
+      find.text('This answer counts toward your CRS score. It is not shown '
+          'on your profile.'),
       findsOneWidget,
     );
 

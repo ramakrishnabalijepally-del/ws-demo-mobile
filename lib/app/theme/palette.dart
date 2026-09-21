@@ -88,4 +88,15 @@ abstract final class WsPalette {
   static const Color darkPlanProColumn = Color(0xFF1E1414);
   static const Color darkPlanProPlusColumn = Color(0xFF171717);
   static const Color darkScoreBreakdown = Color(0xFF161616);
+
+  // ---------------------------------------------------------------------------
+  // Completion green — the one hue outside red and grey, asked for by the
+  // client for the "section complete" tick only. It marks a finished step,
+  // never a verdict, so it does not reopen the state palette the design system
+  // closed. 5.2:1 on white (light), 8.7:1 on the dark card (dark).
+  // TODO(design): mirror into ws-frontend and ws-marketing, and into the
+  // design system, or retire it.
+  // ---------------------------------------------------------------------------
+  static const Color completeGreen = Color(0xFF1E7D34);
+  static const Color darkCompleteGreen = Color(0xFF5CC77A);
 }

@@ -533,20 +533,42 @@ class _ImmigrationProfileTab extends StatelessWidget {
         // to. Both are readouts — generated in Immigration, never here.
         const _ScoreHeading(
           title: 'Federal score',
-          about: 'Express Entry ranks candidates on the Comprehensive Ranking '
-              'System (CRS), out of 1,200 points. WorkSettle works it out from '
-              'the answers above using the points IRCC publishes. Generate it '
-              'in Immigration; once it is there, tap it for the breakdown.',
+          subtitle: "Canada's Express Entry ranking score.",
+          points: [
+            (Icons.flag_outlined, 'Out of 1,200 points (the CRS).'),
+            (
+              Icons.fact_check_outlined,
+              'Worked out from your answers above, using official IRCC '
+                  'points.',
+            ),
+            (
+              Icons.touch_app_outlined,
+              'Get it in Immigration. Then tap the score to see how it adds '
+                  'up.',
+            ),
+          ],
         ),
         const SizedBox(height: WsSpacing.md),
         const _CrsScoreTile(),
         const SizedBox(height: WsSpacing.xxl),
         const _ScoreHeading(
           title: 'PNP score',
-          about: 'Provincial Nominee Programs let a province nominate you for '
-              'permanent residence. Each province scores you on its own grid, '
-              'so each score is generated on its own in Immigration. Tap a '
-              'score for its breakdown.',
+          subtitle: 'Your points with each province.',
+          points: [
+            (
+              Icons.location_city_outlined,
+              'A province can nominate you for permanent residence.',
+            ),
+            (
+              Icons.map_outlined,
+              'Each province scores you on its own points system.',
+            ),
+            (
+              Icons.touch_app_outlined,
+              'Get each one in Immigration. Then tap a score to see how it '
+                  'adds up.',
+            ),
+          ],
         ),
         const SizedBox(height: WsSpacing.md),
         const PnpProvinceGrid(canGenerate: false),
@@ -557,42 +579,102 @@ class _ImmigrationProfileTab extends StatelessWidget {
   }
 }
 
-/// A score's heading with its explanation folded away beneath it.
+/// A score's heading: the title with a small ⓘ beside it, and one plain
+/// line saying what the score is.
 ///
-/// The explanation is there for the reader who wants it and out of the way
-/// for the one who does not — the number is what most people came for.
+/// The ⓘ opens a short explanation — three points, not a paragraph — for the
+/// reader who wants it, and stays out of the way for the one who does not.
 class _ScoreHeading extends StatelessWidget {
-  const _ScoreHeading({required this.title, required this.about});
+  const _ScoreHeading({
+    required this.title,
+    required this.subtitle,
+    required this.points,
+  });
 
   final String title;
-  final String about;
+  final String subtitle;
+
+  /// Each point is one short sentence with the icon that says what it is
+  /// about.
+  final List<(IconData, String)> points;
+
+  void _showAbout(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            WsSpacing.xl,
+            0,
+            WsSpacing.xl,
+            WsSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: context.text.titleLarge),
+              const SizedBox(height: WsSpacing.xl),
+              for (final (icon, text) in points)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: WsSpacing.lg),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      WsIconTile(icon: icon, size: WsTileSize.compact),
+                      const SizedBox(width: WsSpacing.md),
+                      Expanded(
+                        child: Padding(
+                          // Centres a one-line point on the 40 dp tile.
+                          padding: const EdgeInsets.only(top: WsSpacing.sm),
+                          child: Text(text, style: context.text.bodyMedium),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: WsSpacing.sm),
+              WsSecondaryButton(
+                label: 'Got it',
+                onPressed: () => Navigator.of(sheetContext).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Semantics(
-          header: true,
-          child: Text(title, style: context.text.titleLarge),
-        ),
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: const EdgeInsets.only(bottom: WsSpacing.sm),
-          expandedAlignment: Alignment.centerLeft,
-          shape: const Border(),
-          collapsedShape: const Border(),
-          title: Text(
-            'What is this?',
-            style: context.text.bodySmall?.copyWith(color: context.ws.caption),
-          ),
+        Row(
           children: [
-            Text(
-              about,
-              style:
-                  context.text.bodySmall?.copyWith(color: context.ws.caption),
+            Flexible(
+              child: Semantics(
+                header: true,
+                child: Text(title, style: context.text.titleLarge),
+              ),
+            ),
+            // Beside the title, not across the card from it: the symbol
+            // belongs to the words it explains.
+            IconButton(
+              tooltip: 'About the ${title.toLowerCase()}',
+              onPressed: () => _showAbout(context),
+              icon: Icon(
+                Icons.info_outline_rounded,
+                size: 20,
+                color: context.ws.caption,
+              ),
             ),
           ],
+        ),
+        Text(
+          subtitle,
+          style: context.text.bodySmall?.copyWith(color: context.ws.caption),
         ),
       ],
     );
@@ -600,7 +682,9 @@ class _ScoreHeading extends StatelessWidget {
 }
 
 /// The CRS score, small. It is never generated here: before it exists the
-/// tile says where to get it; once it does, the tile opens the breakdown.
+/// tile opens the CRS status screen in Immigration, where it is; once it
+/// does, the tile opens the breakdown. Both open above Profile, so Back
+/// returns here.
 class _CrsScoreTile extends ConsumerWidget {
   const _CrsScoreTile();
 
@@ -611,8 +695,8 @@ class _CrsScoreTile extends ConsumerWidget {
     final verdict = crsVerdict(crs.total);
 
     return WsCard(
-      // Cross-tab, so `go`: the breakdown lives in the Immigration branch.
-      onTap: revealed ? () => context.go(Routes.crsBreakdown) : null,
+      onTap: () =>
+          context.push(revealed ? Routes.crsBreakdown : Routes.crsOverview),
       child: Row(
         children: [
           // The CRS is Canada's federal score, so it carries the flag.
@@ -650,7 +734,7 @@ class _CrsScoreTile extends ConsumerWidget {
                 ] else ...[
                   Text('Not generated yet', style: context.text.titleMedium),
                   Text(
-                    'Generate it in Immigration.',
+                    'Tap to get it in Immigration.',
                     style: context.text.bodySmall
                         ?.copyWith(color: context.ws.caption),
                   ),
@@ -658,14 +742,14 @@ class _CrsScoreTile extends ConsumerWidget {
               ],
             ),
           ),
-          if (revealed) ...[
-            const SizedBox(width: WsSpacing.sm),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: WsIconSize.chevron + 4,
-              color: context.ws.placeholder,
-            ),
-          ],
+          // Centred on the row in both states: the whole card is the target,
+          // and the chevron says it opens something.
+          const SizedBox(width: WsSpacing.sm),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: WsIconSize.chevron + 4,
+            color: context.ws.placeholder,
+          ),
         ],
       ),
     );

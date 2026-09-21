@@ -23,9 +23,9 @@ import 'pnp_score_sheet.dart';
 class PnpProvinceGrid extends ConsumerStatefulWidget {
   const PnpProvinceGrid({this.canGenerate = true, super.key});
 
-  /// False on the profile: scores are generated in Immigration and nowhere
-  /// else, so an ungenerated card there says where to go rather than
-  /// offering to do it.
+  /// False on the profile: scores are generated in Immigration, so an
+  /// ungenerated card there says so — and a tap still takes the reader to
+  /// that province's status screen, with Back returning to the profile.
   final bool canGenerate;
 
   @override
@@ -122,16 +122,16 @@ class _ProvinceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final score = this.score;
 
-    final VoidCallback? onTap = switch ((hasGrid, score)) {
-      (false, _) => () => context.go(Routes.withId(Routes.pnpStreams, code)),
+    // Pushed, never `go`: these screens open above whatever the grid sits
+    // in — the Immigration tab or Profile — so Back returns there.
+    final VoidCallback onTap = switch ((hasGrid, score)) {
+      (false, _) => () => context.push(Routes.withId(Routes.pnpStreams, code)),
       (true, final PnpScore s) => () => showPnpScoreSheet(context, s),
-      (true, null) when canGenerate => () =>
-          context.push(Routes.withId(Routes.pnpStatus, code)),
-      _ => null,
+      (true, null) => () => context.push(Routes.withId(Routes.pnpStatus, code)),
     };
 
     return Semantics(
-      button: onTap != null,
+      button: true,
       label: switch ((hasGrid, score)) {
         (false, _) => '$name, no points grid. Opens its streams.',
         (true, final PnpScore s) =>
@@ -149,12 +149,11 @@ class _ProvinceCard extends StatelessWidget {
               children: [
                 WsProvinceMark(code: code, label: name, size: 28),
                 const Spacer(),
-                if (onTap != null)
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: WsIconSize.chevron + 4,
-                    color: context.ws.placeholder,
-                  ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: WsIconSize.chevron + 4,
+                  color: context.ws.placeholder,
+                ),
               ],
             ),
             const SizedBox(height: WsSpacing.sm),
@@ -177,7 +176,7 @@ class _ProvinceCard extends StatelessWidget {
               )
             else
               Text(
-                hasGrid ? 'Generate in Immigration' : 'No points grid',
+                hasGrid ? 'Get it in Immigration' : 'No points grid',
                 style:
                     context.text.bodySmall?.copyWith(color: context.ws.caption),
               ),

@@ -43,6 +43,7 @@ class WsColors extends ThemeExtension<WsColors> {
     required this.voiceGround,
     required this.voiceForeground,
     required this.primaryShadow,
+    required this.complete,
   });
 
   /// Module glyph colour. Ink for six of the seven — the seven-hue spectrum is
@@ -103,6 +104,10 @@ class WsColors extends ThemeExtension<WsColors> {
   /// white screen. Settle Red at 28%, dropped on press.
   final Color primaryShadow;
 
+  /// The tick on a finished section of a score's checklist, and nothing
+  /// else. See `WsPalette.completeGreen`.
+  final Color complete;
+
   static const WsColors light = WsColors(
     moduleBase: WsPalette.grey900,
     moduleTint: WsPalette.grey100,
@@ -128,6 +133,7 @@ class WsColors extends ThemeExtension<WsColors> {
     voiceGround: WsPalette.grey950,
     voiceForeground: WsPalette.grey0,
     primaryShadow: WsPalette.redShadow,
+    complete: WsPalette.completeGreen,
   );
 
   static const WsColors dark = WsColors(
@@ -155,6 +161,7 @@ class WsColors extends ThemeExtension<WsColors> {
     voiceGround: WsPalette.grey950,
     voiceForeground: WsPalette.grey0,
     primaryShadow: WsPalette.redShadow,
+    complete: WsPalette.darkCompleteGreen,
   );
 
   @override
@@ -183,6 +190,7 @@ class WsColors extends ThemeExtension<WsColors> {
     Color? voiceGround,
     Color? voiceForeground,
     Color? primaryShadow,
+    Color? complete,
   }) {
     return WsColors(
       moduleBase: moduleBase ?? this.moduleBase,
@@ -210,6 +218,7 @@ class WsColors extends ThemeExtension<WsColors> {
       voiceGround: voiceGround ?? this.voiceGround,
       voiceForeground: voiceForeground ?? this.voiceForeground,
       primaryShadow: primaryShadow ?? this.primaryShadow,
+      complete: complete ?? this.complete,
     );
   }
 
@@ -246,6 +255,7 @@ class WsColors extends ThemeExtension<WsColors> {
       voiceGround: mix(voiceGround, other.voiceGround),
       voiceForeground: mix(voiceForeground, other.voiceForeground),
       primaryShadow: mix(primaryShadow, other.primaryShadow),
+      complete: mix(complete, other.complete),
     );
   }
 }

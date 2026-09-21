@@ -120,7 +120,7 @@ void main() {
     // and offers no button of its own.
     expect(container.read(crsRevealedProvider), isFalse);
     expect(find.text('Not generated yet'), findsOneWidget);
-    expect(find.text('Generate it in Immigration.'), findsOneWidget);
+    expect(find.text('Tap to get it in Immigration.'), findsOneWidget);
     expect(find.text('Get my CRS score'), findsNothing);
     expect(find.byType(WsPrimaryButton), findsNothing);
   });
@@ -148,24 +148,6 @@ void main() {
     await tester.tap(score);
     await tester.pumpAndSettle();
     expect(find.byType(CrsBreakdownScreen), findsOneWidget);
-  });
-
-  testWidgets('each score heading folds its description away', (tester) async {
-    final container = await pumpApp(tester, size: const Size(390, 4000));
-    await go(tester, container, Routes.profile);
-
-    final tab = find.widgetWithText(Tab, 'Immigration profile');
-    await tester.ensureVisible(tab);
-    await tester.pumpAndSettle();
-    await tester.tap(tab);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Federal score'), findsOneWidget);
-    expect(find.text('PNP score'), findsOneWidget);
-    expect(find.textContaining('Comprehensive Ranking'), findsNothing);
-    await tester.tap(find.text('What is this?').first);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Comprehensive Ranking'), findsOneWidget);
   });
 
   testWidgets('family chosen in Edit profile moves the CRS score',

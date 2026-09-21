@@ -97,9 +97,11 @@ class _CrsCalculatingScreenState extends ConsumerState<CrsCalculatingScreen> {
     ref.read(crsRevealedProvider.notifier).reveal();
 
     if (widget.toResult) {
-      // go, not push: the result belongs in the Immigration tab's own stack,
-      // with the overview behind it, so Back lands somewhere that makes sense.
-      context.go(Routes.crsResult);
+      // Replace this screen rather than `go`: the result takes the
+      // calculating screen's place with the status screen behind it, and
+      // whatever opened that — the Immigration tab or Profile — behind that.
+      // `go` would rebuild the stack from the Immigration tab and lose Profile.
+      context.pushReplacement(Routes.crsResult);
     } else {
       context.pop();
     }

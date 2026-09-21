@@ -215,6 +215,6 @@ void main() {
       findsWidgets,
     );
     expect(find.text('Get score'), findsNothing);
-    expect(find.text('Generate in Immigration'), findsNWidgets(3));
+    expect(find.text('Get it in Immigration'), findsNWidgets(3));
   });
 }
