@@ -7,7 +7,10 @@
 library;
 
 export 'forgot_password/presentation/screens/forgot_password_screen.dart';
+export 'forgot_password/presentation/screens/new_password_screen.dart';
+export 'forgot_password/presentation/screens/password_reset_success_screen.dart';
 export 'forgot_password/presentation/screens/reset_method_screen.dart';
 export 'shared/presentation/screens/account_created_screen.dart';
+export 'shared/presentation/screens/verify_code_screen.dart';
 export 'sign_in/presentation/screens/sign_in_screen.dart';
 export 'sign_up/presentation/screens/sign_up_screen.dart';

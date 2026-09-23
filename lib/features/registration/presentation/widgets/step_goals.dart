@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 
-import '../../../../app/theme/theme.dart';
 import '../../../../shared/shared.dart';
 import '../../controllers/registration_controller.dart';
-import '../../data/mock_registration_options.dart';
 import '../screens/registration_screen.dart';
 
 /// C5 — Your Goals. Multi-select, at least one.
@@ -23,29 +21,9 @@ class StepGoals extends ConsumerWidget {
       primaryLabel: 'Continue',
       onPrimary: draft.goals.isEmpty ? null : controller.next,
       children: [
-        WsCard(
-          padding: const EdgeInsets.symmetric(
-            horizontal: WsSpacing.lg,
-            vertical: WsSpacing.sm,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < mockGoals.length; i++) ...[
-                WsCheckboxRow(
-                  label: mockGoals[i],
-                  value: draft.goals.contains(mockGoals[i]),
-                  onChanged: (_) => controller.toggleGoal(mockGoals[i]),
-                ),
-                if (i != mockGoals.length - 1)
-                  Divider(color: context.colors.outlineVariant, height: 1),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: WsSpacing.md),
-        Text(
-          '${draft.goals.length} selected',
-          style: context.text.bodySmall?.copyWith(color: context.ws.caption),
+        WsGoalsChecklist(
+          selected: draft.goals,
+          onToggle: controller.toggleGoal,
         ),
       ],
     );

@@ -8,10 +8,8 @@ import '../screens/registration_screen.dart';
 
 /// C2 — Basic Information.
 ///
-/// The date field asks for its format in the label's helper rather than
-/// correcting the reader afterwards: *"Enter your date of birth as
-/// YYYY-MM-DD"*, which is the design system's own example of naming the fix
-/// (section 20).
+/// The date of birth is picked from wheels rather than typed, so it cannot be
+/// malformed; the error only appears if the reader continues without one.
 class StepBasicInfo extends ConsumerStatefulWidget {
   const StepBasicInfo({super.key});
 
@@ -52,7 +50,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
     setState(() {
       _dobError = _isoDate.hasMatch(_dob.text.trim())
           ? null
-          : 'Enter your date of birth as YYYY-MM-DD';
+          : 'Choose your date of birth to continue';
     });
     if (_dobError != null) return;
 
@@ -93,22 +91,19 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
           leadingIcon: Icons.person_outline_rounded,
         ),
         const SizedBox(height: WsSpacing.xl),
-        WsField(
+        WsDateField(
           label: 'Date of Birth',
           required: true,
           controller: _dob,
-          hint: '1995-12-27',
-          helper: 'Four-digit year, month, day',
           error: _dobError,
-          leadingIcon: Icons.calendar_today_outlined,
+          onChanged: () => setState(() => _dobError = null),
         ),
         const SizedBox(height: WsSpacing.xl),
-        WsField(
-          label: 'Country of Origin',
+        WsCountryField(
+          label: 'Country of Citizenship',
           required: true,
           controller: _country,
-          hint: 'United Kingdom',
-          leadingIcon: Icons.public_outlined,
+          helper: 'The country that issued your passport',
         ),
       ],
     );

@@ -185,16 +185,15 @@ const AssistantExchange mockCrsNotAskedExchange = AssistantExchange(
   ],
 );
 
-/// L1 — the empty state's suggested questions.
-const List<String> mockSuggestedQuestions = [
-  'What is my CRS score and is it competitive?',
-  'Which provincial programs do I qualify for?',
-  'How do I get my UK degree recognised in Canada?',
-  'What does a Canadian resume look like?',
-  'Do I need a job offer for Express Entry?',
-  'How long does permanent residence take?',
-  'Can my partner work while my application is processed?',
-  'What is an ECA and do I need one?',
+/// L1 — the empty state's frequently asked questions.
+///
+/// Built from the scripted answers, so every question listed has a real
+/// answer behind it. A question typed that has no script falls back to the
+/// CRS answer; listing one here would make that fallback look like a bug.
+// TODO(backend): the real assistant answers anything; this list then comes
+// from what candidates actually ask most.
+final List<String> mockFrequentlyAskedQuestions = [
+  for (final exchange in mockExchanges) exchange.question,
 ];
 
 /// L2–L5 — four scripted answers.

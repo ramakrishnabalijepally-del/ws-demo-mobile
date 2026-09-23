@@ -45,8 +45,8 @@ void main() {
     expect(find.text('Basic profile'), findsWidgets);
     expect(find.text('Immigration profile'), findsWidgets);
     expect(find.widgetWithText(TextButton, 'Edit'), findsNWidgets(2));
-    // The basic card is the whole profile, so it links nowhere further.
-    expect(find.text('See the full basic profile'), findsNothing);
+    // Each card is a summary of its own tab, and links to it.
+    expect(find.text('See the full basic profile'), findsOneWidget);
     expect(find.text('See the full immigration profile'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -60,6 +60,7 @@ void main() {
         tester.widgetList<Tab>(find.byType(Tab)).map((t) => t.text).toList();
     expect(tabs, [
       'Overview',
+      'Basic profile',
       'Immigration profile',
       'Jobs',
       'Documents',
@@ -67,14 +68,30 @@ void main() {
     expect(find.text('Goals'), findsNothing);
   });
 
-  testWidgets('the basic profile shows From with a flag, and no Location',
+  testWidgets('the basic profile shows every registration answer',
       (tester) async {
     final container = await pumpApp(tester);
     await go(tester, container, Routes.profile);
+    await tester.tap(find.text('See the full basic profile'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('From'), findsOneWidget);
+    for (final card in [
+      'Personal details',
+      'Contact',
+      'Location',
+      'Profile type',
+      'Your goals',
+      'Job interests',
+    ]) {
+      expect(find.text(card), findsOneWidget, reason: card);
+    }
+    expect(find.text('Citizenship'), findsOneWidget);
     expect(find.text('United Kingdom'), findsOneWidget);
-    expect(find.text('Location'), findsNothing);
+    // Location, goals and job interests are asked in registration, so they
+    // are shown here too.
+    expect(find.text('Toronto'), findsOneWidget);
+    expect(find.text('Ontario'), findsOneWidget);
+    expect(find.text('Design, Content, Marketing'), findsOneWidget);
 
     // The country flag is drawn in the standard mark frame.
     final marks = tester.widgetList<WsProvinceMark>(
@@ -93,8 +110,12 @@ void main() {
       'Email',
       'Phone',
       'Date of Birth',
-      'Country you are from',
+      'Country of citizenship',
       'You are a',
+      'City',
+      'Province or Territory',
+      'Your goals',
+      'Job interests',
     ]) {
       expect(
         find.textContaining(label, findRichText: true),
@@ -111,7 +132,6 @@ void main() {
       find.textContaining('Occupation', findRichText: true),
       findsOneWidget,
     );
-    expect(find.textContaining('City', findRichText: true), findsNothing);
   });
 
   testWidgets('editing the country and profile type reaches the profile',
@@ -119,10 +139,14 @@ void main() {
     final container = await pumpApp(tester);
     await go(tester, container, Routes.profileEdit);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'United Kingdom'),
-      'India',
-    );
+    // The country is picked from the list, not typed.
+    await tester.tap(find.widgetWithText(TextField, 'United Kingdom'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'India');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('India').last);
+    await tester.pumpAndSettle();
+
     await tester.ensureVisible(find.text('Student'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Student'));
@@ -133,6 +157,26 @@ void main() {
     final saved = container.read(candidateProvider);
     expect(saved.countryOfOrigin, 'India');
     expect(saved.profileType, 'Student');
+  });
+
+  testWidgets('goals and job interests edited here reach the profile',
+      (tester) async {
+    final container = await pumpApp(tester);
+    await go(tester, container, Routes.profileEdit);
+
+    await tester.ensureVisible(find.text('Predict my CRS score'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Predict my CRS score'));
+    await tester.ensureVisible(find.text('Healthcare'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Healthcare'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    final saved = container.read(candidateProvider);
+    expect(saved.goals, contains('Predict my CRS score'));
+    expect(saved.jobCategories, contains('Healthcare'));
   });
 
   test('country names find their flag, whatever the casing', () {

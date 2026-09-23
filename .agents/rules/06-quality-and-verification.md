@@ -65,6 +65,24 @@ Then confirm, honestly:
 reports two warnings in `crs_predictor`" is far more useful than an unverified
 "done".
 
+## The copy audit
+
+`test/copy_audit_test.dart` reads every string literal in `lib/` and fails on
+three things: copy that promises an immigration outcome, copy that tells the
+reader what their own CRS score is, and the draw range typed out instead of
+read from `crsDrawLow`/`crsDrawHigh`.
+
+It exists because fixing those one screen at a time did not work — a score
+written into prose was fixed in one assistant answer and left standing in
+another, and "effectively guarantees an invitation" was fixed in the assistant
+and left standing in a home article. Copy rules apply to all copy, so they are
+checked against all of it at once.
+
+**If it fails, fix the copy, not the test.** Narrow a rule only when it flags
+something genuinely correct — "it is not a guarantee" keeps the rule rather
+than breaking it, and a published draw result is news rather than a claim about
+the reader. Both of those are already allowed for.
+
 ## Tests
 
 `test/` mirrors `lib/`. For mock-UI work, a widget test that the screen builds

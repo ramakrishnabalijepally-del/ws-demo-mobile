@@ -44,7 +44,17 @@ void main() {
     'Sign in': SignInScreen.new,
     'Sign up': SignUpScreen.new,
     'Forgot password': ForgotPasswordScreen.new,
-    'Reset method': ResetMethodScreen.new,
+    'Reset method': () => const ResetMethodScreen(email: 'amina@example.com'),
+    'Reset code': () => const VerifyCodeScreen(
+          purpose: VerifyCodePurpose.passwordReset,
+          email: 'amina@example.com',
+        ),
+    'Sign-up code': () => const VerifyCodeScreen(
+          purpose: VerifyCodePurpose.emailVerification,
+          email: 'amina@example.com',
+        ),
+    'New password': () => const NewPasswordScreen(email: 'amina@example.com'),
+    'Password reset done': PasswordResetSuccessScreen.new,
     'Account created': AccountCreatedScreen.new,
     'Registration': RegistrationScreen.new,
 
@@ -93,7 +103,6 @@ void main() {
     'Resources': ResourcesScreen.new,
 
     // Assistant
-    'AI Agent': AiAgentScreen.new,
     'Assistant chat': AssistantScreen.new,
     'Voice mode': VoiceModeScreen.new,
     'Saved conversations': SavedConversationsScreen.new,

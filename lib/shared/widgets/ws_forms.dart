@@ -25,6 +25,7 @@ class WsField extends StatelessWidget {
     this.enabled = true,
     this.readOnly = false,
     this.leadingIcon,
+    this.leading,
     this.trailingIcon,
     this.onTrailingTap,
     this.keyboardType,
@@ -50,6 +51,9 @@ class WsField extends StatelessWidget {
   final bool enabled;
   final bool readOnly;
   final IconData? leadingIcon;
+
+  /// Replaces [leadingIcon] — for a mark, such as a flag, that is not a glyph.
+  final Widget? leading;
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
   final TextInputType? keyboardType;
@@ -76,6 +80,9 @@ class WsField extends StatelessWidget {
           maxLines: obscure ? 1 : maxLines,
           onChanged: onChanged,
           onTap: onTap,
+          // iOS number pads have no Return key, so tapping away is the only
+          // way to put the keyboard down.
+          onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           style: context.text.bodyMedium,
           decoration: InputDecoration(
             hintText: hint,
@@ -83,9 +90,16 @@ class WsField extends StatelessWidget {
             // so we suppress the built-in error text slot.
             errorText: null,
             fillColor: hasError ? context.ws.redTint : context.colors.surface,
-            prefixIcon: leadingIcon == null
-                ? null
-                : Icon(leadingIcon, size: WsIconSize.field),
+            prefixIcon: leading != null
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: WsSpacing.md,
+                    ),
+                    child: leading,
+                  )
+                : leadingIcon == null
+                    ? null
+                    : Icon(leadingIcon, size: WsIconSize.field),
             suffixIcon: trailingIcon == null
                 ? null
                 : IconButton(

@@ -11,6 +11,13 @@ abstract final class Routes {
   static const String signUp = '/sign-up';
   static const String forgotPassword = '/forgot-password';
   static const String resetMethod = '/forgot-password/method';
+
+  /// These three take the account's email as `extra`.
+  static const String resetVerifyCode = '/forgot-password/verify';
+  static const String resetNewPassword = '/forgot-password/new-password';
+  static const String signUpVerifyEmail = '/sign-up/verify';
+
+  static const String resetSuccess = '/forgot-password/done';
   static const String accountCreated = '/account-created';
 
   static const String registration = '/registration';

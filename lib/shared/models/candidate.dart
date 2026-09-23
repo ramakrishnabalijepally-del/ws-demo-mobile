@@ -5,9 +5,54 @@ import 'profile_section.dart';
 /// What the candidate is here for, in the order registration offers them.
 ///
 /// Registration asks this on its own step, with a blurb under each option;
-/// the profile form asks the same question with the same three answers, so
+/// the profile form asks the same question with the same four answers, so
 /// the vocabulary lives here rather than inside either feature.
-const List<String> candidateProfileTypes = ['Job Seeker', 'Student', 'Other'];
+const List<String> candidateProfileTypes = [
+  'Job Seeker',
+  'Student',
+  'Permanent Residence Applicant',
+  'Other',
+];
+
+/// Your Goals — multi-select, asked in registration and editable on the
+/// profile. Written in the second person, as the voice rules ask.
+const List<String> candidateGoals = [
+  'Find a job in my field',
+  'Apply for permanent residence',
+  'Understand which programs I qualify for',
+  'Predict my CRS score',
+  'Improve my French',
+  'Book a consultation with a licensed RCIC',
+  'Get my credentials recognised',
+  'Settle my family in Canada',
+];
+
+/// Job Interests — three to five, asked in registration and editable on the
+/// profile.
+const List<String> candidateJobCategories = [
+  'Design',
+  'Content',
+  'Marketing',
+  'Engineering',
+  'Programming',
+  'Finance',
+  'Human Resources',
+  'Customer Service',
+  'Healthcare',
+  'Education',
+  'Trades',
+  'Logistics',
+  'Hospitality',
+  'Accounting',
+  'Legal',
+  'Sales',
+  'Administration',
+  'Research',
+];
+
+/// How many job interests a candidate picks.
+const int minJobCategories = 3;
+const int maxJobCategories = 5;
 
 /// The signed-in candidate.
 ///

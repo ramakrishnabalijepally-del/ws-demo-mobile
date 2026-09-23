@@ -78,16 +78,13 @@ class _AboutYouForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        WsField(
+        WsDateField(
           label: 'Date of birth',
           required: true,
           controller: dateOfBirth,
-          hint: 'YYYY-MM-DD',
           helper: 'Age is worth up to 110 points, most between 20 and 29.',
           error: dateOfBirthError,
-          keyboardType: TextInputType.datetime,
-          leadingIcon: Icons.calendar_today_outlined,
-          onChanged: (_) => onDateOfBirthChanged(),
+          onChanged: onDateOfBirthChanged,
         ),
         _gap,
         ChoiceGroup<MaritalStatus>(

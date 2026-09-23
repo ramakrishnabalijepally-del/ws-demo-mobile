@@ -340,17 +340,21 @@ class _ConfettiPainter extends CustomPainter {
   final Color red;
   final Color ink;
 
+  static const double _fadeFrom = 0.65;
+
   @override
   void paint(Canvas canvas, Size size) {
     for (final piece in pieces) {
       final t = ((progress - piece.delay) / (1 - piece.delay)).clamp(0.0, 1.0);
-      if (t <= 0) continue;
+      // Gone once it has landed, so nothing is left lying on the screen.
+      if (t <= 0 || t >= 1) continue;
 
       final dx = (piece.x + piece.drift * t) * size.width;
       final dy = t * size.height * 0.9;
+      // Full strength while falling, fading out over the last third.
+      final fade = t < _fadeFrom ? 1.0 : (1 - t) / (1 - _fadeFrom);
       final paint = Paint()
-        ..color =
-            (piece.isLeaf ? red : ink).withValues(alpha: 0.85 * (1 - t * 0.4));
+        ..color = (piece.isLeaf ? red : ink).withValues(alpha: 0.85 * fade);
 
       canvas.save();
       canvas.translate(dx, dy);

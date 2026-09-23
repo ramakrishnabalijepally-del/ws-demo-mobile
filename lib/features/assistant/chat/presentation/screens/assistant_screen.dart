@@ -125,19 +125,15 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Opened as the AI Agent tab it is a tab root, so it carries the profile
+    // avatar like every other tab; pushed from elsewhere, it gets Back.
+    final isTabRoot = !Navigator.canPop(context);
+
     return Scaffold(
       appBar: AppBar(
-        // The app bar title slot is narrow once two actions are in place,
-        // so the presence line is the short form here. The full
-        // "Online · Based on Your Profile" belongs on the empty state, which
-        // has the width for it.
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('WorkSettle AI', style: context.text.titleMedium),
-            const WsPresence(label: 'Online'),
-          ],
-        ),
+        leading: isTabRoot ? const WsProfileButton() : null,
+        leadingWidth: isTabRoot ? WsTouch.minTarget + WsSpacing.md : null,
+        title: Text('WorkSettle AI', style: context.text.titleMedium),
         actions: [
           IconButton(
             tooltip: 'Voice mode',
@@ -172,7 +168,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           ),
           WsComposer(
             controller: _composer,
-            hint: 'Ask about jobs, immigration or settling in',
+            hint: 'Please type your query',
             onSend: () => _ask(_composer.text),
             onMic: () => context.push(Routes.assistantVoice),
           ),
@@ -182,52 +178,83 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 }
 
+/// The globe and the frequently asked questions — what the conversation looks
+/// like before anything has been asked.
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onAsk});
 
   final ValueChanged<String> onAsk;
+
+  /// Tall enough to be the moment on the screen, short enough that the first
+  /// questions still show above the composer on a 360 dp phone.
+  static const double _globeHeight = 220;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         WsSpacing.xl,
-        WsSpacing.xxl,
+        WsSpacing.lg,
         WsSpacing.xl,
         WsSpacing.xl,
       ),
       children: [
-        const Center(
-          child: WsIconTile(
-            icon: Icons.forum_rounded,
-            size: WsTileSize.header,
+        // The same globe as the splash: journeys to Canada, turning slowly.
+        // It stops turning under reduced motion on its own.
+        const WsAppear(
+          duration: WsMotion.entranceSequence,
+          child: SizedBox(
+            height: _globeHeight,
+            child: RepaintBoundary(
+              child: WsGlobe(
+                semanticLabel: 'A globe turning, with routes from around the '
+                    'world to Canada',
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: WsSpacing.xl),
-        Text(
-          'Ask WorkSettle anything',
-          style: context.text.headlineLarge,
+        const SizedBox(height: WsSpacing.lg),
+        // "WorkSettle" in the brand red, echoing the logo. The red-on-surface
+        // token rather than the logo's own hex, so it stays legible in both
+        // themes — the same way the positioning line colours its emphasis.
+        Text.rich(
+          TextSpan(
+            style: context.text.headlineLarge,
+            children: [
+              const TextSpan(text: 'Ask '),
+              TextSpan(
+                text: 'WorkSettle',
+                style: TextStyle(color: context.ws.redOnSurface),
+              ),
+              const TextSpan(text: ' AI anything'),
+            ],
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: WsSpacing.sm),
         Text(
-          'Answers are based on your profile, so they are about your situation '
-          'rather than the general case.',
+          'Jobs, immigration or settling in. Answers are based on your '
+          'profile, so they are about your situation rather than the general '
+          'case.',
           style: context.text.bodyMedium
               ?.copyWith(color: context.colors.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: WsSpacing.xxl),
-        // The suggestions cascade in under the heading.
-        for (final (i, question) in mockSuggestedQuestions.indexed)
+        Text('Frequently asked questions', style: context.text.titleLarge),
+        const SizedBox(height: WsSpacing.md),
+        // The questions cascade in under the heading.
+        for (final (i, question) in mockFrequentlyAskedQuestions.indexed)
           WsAppear(
-            delay: i * 0.07,
+            delay: 0.2 + i * 0.07,
             duration: WsMotion.entranceSequence,
             child: WsSuggestionRow(
               question: question,
               onTap: () => onAsk(question),
             ),
           ),
+        const SizedBox(height: WsSpacing.lg),
+        const WsDisclaimer(),
       ],
     );
   }

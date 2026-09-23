@@ -14,23 +14,33 @@ import '../../../../../shared/shared.dart';
 /// The contact details are masked, which is the one place partial information
 /// is the right answer — it confirms *which* address without exposing it.
 class ResetMethodScreen extends StatefulWidget {
-  const ResetMethodScreen({super.key});
+  const ResetMethodScreen({required this.email, super.key});
+
+  final String email;
 
   @override
   State<ResetMethodScreen> createState() => _ResetMethodScreenState();
 }
 
 class _ResetMethodScreenState extends State<ResetMethodScreen> {
+  // Email first: it is the channel the code is actually sent on.
   int _selected = 0;
 
-  static const List<({IconData icon, String via, String detail})> _methods = [
-    (icon: Icons.sms_outlined, via: 'via SMS', detail: '+1 416 ••• ••42'),
+  late final List<({IconData icon, String via, String detail})> _methods = [
     (
       icon: Icons.mail_outline_rounded,
       via: 'via Email',
-      detail: 'ad••••••@yourdomain.com',
+      detail: _mask(widget.email),
     ),
+    (icon: Icons.sms_outlined, via: 'via SMS', detail: '+1 416 ••• ••42'),
   ];
+
+  static String _mask(String email) {
+    final at = email.indexOf('@');
+    if (at < 1) return email;
+    final visible = at < 3 ? 1 : 2;
+    return '${email.substring(0, visible)}••••••${email.substring(at)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,9 +101,10 @@ class _ResetMethodScreenState extends State<ResetMethodScreen> {
               const Spacer(),
               WsPrimaryButton(
                 label: 'Continue',
-                // TODO(backend): no code is sent. This lands on the confirmed
-                // screen so the flow can be walked end to end.
-                onPressed: () => context.go(Routes.accountCreated),
+                // TODO(backend): send the code on the chosen channel. SMS
+                // lands on the same mock email-code screen for now.
+                onPressed: () =>
+                    context.push(Routes.resetVerifyCode, extra: widget.email),
               ),
             ],
           ),

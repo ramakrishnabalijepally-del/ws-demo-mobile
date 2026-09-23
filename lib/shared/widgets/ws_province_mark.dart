@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/theme.dart';
+import '../data/countries.dart';
 
 /// A province, territory or country mark in its correct frame.
 ///
@@ -142,8 +143,15 @@ class WsProvinceMark extends StatelessWidget {
 
   /// Null when the country is not one we hold a flag for. The caller draws
   /// nothing rather than the wrong flag.
-  static String? countryCodeFor(String name) =>
-      countryCodes[name.trim().toLowerCase()];
+  static String? countryCodeFor(String name) {
+    final key = name.trim().toLowerCase();
+    final alias = countryCodes[key];
+    if (alias != null) return alias;
+    for (final (country, code) in countries) {
+      if (country.toLowerCase() == key) return code;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {

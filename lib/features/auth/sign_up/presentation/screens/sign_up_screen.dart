@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
+import '../../../shared/data/mock_verification.dart';
 import '../../../shared/presentation/widgets/auth_scaffold.dart';
 import '../../../sign_in/presentation/widgets/social_sign_in_row.dart';
 
@@ -83,7 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     if (_emailError == null &&
         _passwordError == null &&
         _confirmError == null) {
-      context.go(Routes.registration);
+      context.push(Routes.signUpVerifyEmail, extra: email);
     }
   }
 
@@ -156,7 +157,7 @@ class _SignUpForm extends StatelessWidget {
           label: 'First Name',
           required: true,
           controller: first,
-          hint: 'Adam',
+          hint: mockCandidate.firstName,
           leadingIcon: Icons.person_outline_rounded,
         ),
         const SizedBox(height: WsSpacing.xl),
@@ -164,7 +165,7 @@ class _SignUpForm extends StatelessWidget {
           label: 'Last Name',
           required: true,
           controller: last,
-          hint: 'Smith',
+          hint: mockCandidate.lastName,
           leadingIcon: Icons.person_outline_rounded,
         ),
         const SizedBox(height: WsSpacing.xl),
@@ -172,7 +173,8 @@ class _SignUpForm extends StatelessWidget {
           label: 'Email',
           required: true,
           controller: email,
-          hint: 'name@example.com',
+          // TODO(backend): back to 'name@example.com' with the mock.
+          hint: mockCandidate.email,
           error: emailError,
           keyboardType: TextInputType.emailAddress,
           leadingIcon: Icons.mail_outline_rounded,

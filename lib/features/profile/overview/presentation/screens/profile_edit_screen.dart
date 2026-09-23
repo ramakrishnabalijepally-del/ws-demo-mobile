@@ -43,6 +43,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
   late final TextEditingController _dob;
   late final TextEditingController _occupation;
   late final TextEditingController _country;
+  late final TextEditingController _city;
+  String? _province;
+  late List<String> _goals;
+  late List<String> _jobCategories;
 
   // Immigration
   late final TextEditingController _passportNumber;
@@ -68,6 +72,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     _dob = TextEditingController(text: c.dateOfBirth);
     _occupation = TextEditingController(text: c.occupation);
     _country = TextEditingController(text: c.countryOfOrigin);
+    _city = TextEditingController(text: c.city);
+    _province = c.province.isEmpty ? null : c.province;
+    _goals = [...c.goals];
+    _jobCategories = [...c.jobCategories];
     _profileType = c.profileType;
 
     final i = c.immigration;
@@ -90,6 +98,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
       _dob,
       _occupation,
       _country,
+      _city,
       _passportNumber,
       _passportIssue,
       _passportExpiry,
@@ -101,6 +110,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
     _tabs.dispose();
     super.dispose();
   }
+
+  static void _toggle(List<String> list, String value) =>
+      list.contains(value) ? list.remove(value) : list.add(value);
 
   static final RegExp _datePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
@@ -157,7 +169,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
       }
     });
 
-    final basicInvalid = _emailError != null || _dateErrors.containsKey(_dob);
+    final basicInvalid = _emailError != null ||
+        _dateErrors.containsKey(_dob) ||
+        _jobCategories.length < minJobCategories;
     if (basicInvalid) {
       _tabs.animateTo(ProfileEditTab.basic.index);
       return;
@@ -178,7 +192,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
             dateOfBirth: _dob.text.trim(),
             occupation: _occupation.text.trim(),
             countryOfOrigin: _country.text.trim(),
+            city: _city.text.trim(),
+            province: _province ?? '',
             profileType: _profileType,
+            goals: _goals,
+            jobCategories: _jobCategories,
             immigration: ImmigrationDetails(
               passportNumber: _passportNumber.text.trim(),
               passportIssueDate: _passportIssue.text.trim(),
@@ -225,6 +243,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen>
             country: _country,
             profileType: _profileType,
             onProfileType: (value) => setState(() => _profileType = value),
+            city: _city,
+            province: _province,
+            onProvince: (value) => setState(() => _province = value),
+            goals: _goals,
+            onGoal: (goal) => setState(() => _toggle(_goals, goal)),
+            jobCategories: _jobCategories,
+            onJobCategory: (category) =>
+                setState(() => _toggle(_jobCategories, category)),
           ),
           _ImmigrationForm(
             passportNumber: _passportNumber,
@@ -279,6 +305,13 @@ class _BasicForm extends StatelessWidget {
     required this.country,
     required this.profileType,
     required this.onProfileType,
+    required this.city,
+    required this.province,
+    required this.onProvince,
+    required this.goals,
+    required this.onGoal,
+    required this.jobCategories,
+    required this.onJobCategory,
   });
 
   final TextEditingController first;
@@ -292,6 +325,13 @@ class _BasicForm extends StatelessWidget {
   final TextEditingController country;
   final String profileType;
   final ValueChanged<String> onProfileType;
+  final TextEditingController city;
+  final String? province;
+  final ValueChanged<String?> onProvince;
+  final List<String> goals;
+  final ValueChanged<String> onGoal;
+  final List<String> jobCategories;
+  final ValueChanged<String> onJobCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -342,11 +382,10 @@ class _BasicForm extends StatelessWidget {
           leadingIcon: Icons.work_outline_rounded,
         ),
         const SizedBox(height: WsSpacing.xl),
-        WsField(
-          label: 'Country you are from',
+        WsCountryField(
+          label: 'Country of citizenship',
           controller: country,
           helper: 'Shown with its flag on your profile',
-          leadingIcon: Icons.public_outlined,
         ),
         const SizedBox(height: WsSpacing.xxl),
         ChoiceGroup<String>(
@@ -356,6 +395,25 @@ class _BasicForm extends StatelessWidget {
           selected: profileType.isEmpty ? null : profileType,
           onSelected: onProfileType,
         ),
+        const SizedBox(height: WsSpacing.xxxl),
+        const _FormHeading(icon: Icons.place_outlined, title: 'Location'),
+        const SizedBox(height: WsSpacing.lg),
+        WsLocationFields(
+          city: city,
+          province: province,
+          onProvinceChanged: onProvince,
+        ),
+        const SizedBox(height: WsSpacing.xxxl),
+        const _FormHeading(icon: Icons.flag_outlined, title: 'Your goals'),
+        const SizedBox(height: WsSpacing.lg),
+        WsGoalsChecklist(selected: goals, onToggle: onGoal),
+        const SizedBox(height: WsSpacing.xxxl),
+        const _FormHeading(
+          icon: Icons.work_outline_rounded,
+          title: 'Job interests',
+        ),
+        const SizedBox(height: WsSpacing.lg),
+        WsJobCategoryPicker(selected: jobCategories, onToggle: onJobCategory),
       ],
     );
   }

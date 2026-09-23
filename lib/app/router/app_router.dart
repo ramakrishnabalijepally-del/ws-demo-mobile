@@ -69,7 +69,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: Routes.resetMethod,
-        builder: (_, __) => const ResetMethodScreen(),
+        builder: (_, state) =>
+            ResetMethodScreen(email: state.extra as String? ?? ''),
+      ),
+      GoRoute(
+        path: Routes.resetVerifyCode,
+        builder: (_, state) => VerifyCodeScreen(
+          purpose: VerifyCodePurpose.passwordReset,
+          email: state.extra as String? ?? '',
+        ),
+      ),
+      GoRoute(
+        path: Routes.resetNewPassword,
+        builder: (_, state) =>
+            NewPasswordScreen(email: state.extra as String? ?? ''),
+      ),
+      GoRoute(
+        path: Routes.resetSuccess,
+        builder: (_, __) => const PasswordResetSuccessScreen(),
+      ),
+      GoRoute(
+        path: Routes.signUpVerifyEmail,
+        builder: (_, state) => VerifyCodeScreen(
+          purpose: VerifyCodePurpose.emailVerification,
+          email: state.extra as String? ?? '',
+        ),
       ),
       GoRoute(
         path: Routes.accountCreated,
@@ -325,7 +349,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: Routes.assistant,
-                builder: (_, __) => const AiAgentScreen(),
+                // The tab opens straight into the conversation.
+                builder: (_, __) => const AssistantScreen(),
                 routes: [
                   GoRoute(
                     path: 'chat',

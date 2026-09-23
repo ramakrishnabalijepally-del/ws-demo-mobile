@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/theme.dart';
 import '../../../../shared/shared.dart';
 import '../../controllers/registration_controller.dart';
-import '../../data/mock_registration_options.dart';
 import '../screens/registration_screen.dart';
 
 /// C3 — Contact Information.
@@ -83,65 +82,11 @@ class _StepContactState extends ConsumerState<StepContact> {
         const SizedBox(height: WsSpacing.xl),
         WsPhoneField(label: 'Phone Number', required: true, controller: _phone),
         const SizedBox(height: WsSpacing.xl),
-        WsField(
-          label: 'City',
+        WsLocationFields(
+          city: _city,
+          province: _province,
           required: true,
-          controller: _city,
-          hint: 'Toronto',
-          leadingIcon: Icons.location_city_outlined,
-        ),
-        const SizedBox(height: WsSpacing.xl),
-        _ProvinceSelect(
-          value: _province,
-          onChanged: (v) => setState(() => _province = v),
-        ),
-      ],
-    );
-  }
-}
-
-/// A province select built from the shared field shell, so the label sits above
-/// and the radius still says "you type into this".
-class _ProvinceSelect extends StatelessWidget {
-  const _ProvinceSelect({required this.value, required this.onChanged});
-
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Province or Territory',
-          style:
-              context.text.labelLarge?.copyWith(color: context.ws.fieldLabel),
-        ),
-        const SizedBox(height: WsSpacing.sm),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          isExpanded: true,
-          icon: Icon(
-            Icons.expand_more_rounded,
-            color: context.ws.placeholder,
-          ),
-          style: context.text.bodyMedium,
-          decoration: InputDecoration(
-            hintText: 'Choose a province',
-            prefixIcon: const Icon(
-              Icons.map_outlined,
-              size: WsIconSize.field,
-            ),
-            hintStyle: context.text.bodyMedium
-                ?.copyWith(color: context.ws.placeholder),
-          ),
-          items: [
-            for (final p in mockProvinces)
-              DropdownMenuItem(value: p, child: Text(p)),
-          ],
-          onChanged: onChanged,
+          onProvinceChanged: (p) => setState(() => _province = p),
         ),
       ],
     );

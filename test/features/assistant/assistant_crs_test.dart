@@ -31,6 +31,12 @@ void main() {
           builder: (context, ref, _) => MaterialApp.router(
             theme: WorkSettleTheme.light,
             routerConfig: ref.watch(routerProvider),
+            // Reduced motion stops the chat's globe, which otherwise turns
+            // forever and never lets pumpAndSettle settle.
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
           ),
         ),
       ),

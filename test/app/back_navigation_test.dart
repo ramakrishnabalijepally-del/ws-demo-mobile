@@ -35,6 +35,12 @@ void main() {
           builder: (context, ref, _) => MaterialApp.router(
             theme: WorkSettleTheme.light,
             routerConfig: ref.watch(routerProvider),
+            // Reduced motion stops the chat's globe, which otherwise turns
+            // forever and never lets pumpAndSettle settle.
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
           ),
         ),
       ),
@@ -175,21 +181,35 @@ void main() {
     expect(find.text('Ask the assistant').hitTestable(), findsOneWidget);
   });
 
-  testWidgets('the dashboard has Settings beside notifications',
+  testWidgets('Settings is off the dashboard and still reached from Profile',
       (tester) async {
     final c = await pumpApp(tester);
     c.read(routerProvider).go(Routes.home);
     await tester.pumpAndSettle();
     expect(find.byType(DashboardScreen), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsNothing);
+    expect(find.byTooltip('Notifications'), findsOneWidget);
 
-    final settings = find.byTooltip('Settings');
-    expect(
-      tester.getCenter(settings).dx,
-      lessThan(tester.getCenter(find.byTooltip('Notifications')).dx),
-    );
-    await tester.tap(settings);
+    c.read(routerProvider).go(Routes.profile);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('the Profile gear sits exactly where the Home bell does',
+      (tester) async {
+    final c = await pumpApp(tester);
+    c.read(routerProvider).go(Routes.home);
+    await tester.pumpAndSettle();
+    final bell = tester.getCenter(find.byTooltip('Notifications'));
+
+    c.read(routerProvider).go(Routes.profile);
+    await tester.pumpAndSettle();
+    final gear = tester.getCenter(find.byTooltip('Settings'));
+
+    expect(gear.dx, moreOrLessEquals(bell.dx, epsilon: 0.5));
+    expect(gear.dy, moreOrLessEquals(bell.dy, epsilon: 0.5));
   });
 
   testWidgets('each score heading explains itself behind an ⓘ button',

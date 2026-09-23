@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../app/router/routes.dart';
 import '../../../../../app/theme/theme.dart';
 import '../../../../../shared/shared.dart';
+import '../../../shared/data/mock_verification.dart';
 
 /// B5 — where should we send the reset?
 ///
@@ -35,7 +36,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ? null
           : 'Enter the email address on your account, like name@example.com';
     });
-    if (_error == null) context.push(Routes.resetMethod);
+    if (_error == null) context.push(Routes.resetMethod, extra: email);
   }
 
   @override
@@ -55,7 +56,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: WsSpacing.sm),
               Text(
                 'Tell us the email address on your account and we will send you '
-                'a link to set a new password.',
+                'a code to set a new password.',
                 style: context.text.bodyMedium
                     ?.copyWith(color: context.colors.onSurfaceVariant),
               ),
@@ -64,7 +65,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 label: 'Email',
                 required: true,
                 controller: _email,
-                hint: 'name@example.com',
+                // TODO(backend): back to 'name@example.com' with the mock.
+                hint: mockCandidate.email,
                 error: _error,
                 keyboardType: TextInputType.emailAddress,
                 trailingIcon: Icons.mail_outline_rounded,

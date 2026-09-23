@@ -66,9 +66,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     return Scaffold(
       appBar: AppBar(
-        // Taller than the default so the lockup and its tagline are not pressed
-        // against the content below.
-        toolbarHeight: kToolbarHeight + WsSpacing.lg,
+        toolbarHeight: WsHeaderAction.toolbarHeight,
         // Profile left the bottom bar when the AI agent took its place; the
         // avatar is now the way in, in the same slot on every tab.
         leading: const WsProfileButton(),
@@ -80,27 +78,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           child: const WsWordmark(width: 150),
         ),
         actions: [
-          // Settings sits beside notifications so it is one tap from home,
-          // not only behind the profile. Plain glyphs, no frames: two framed
-          // circles beside the avatar crowded the bar.
-          _HeaderAction(
-            tooltip: 'Settings',
-            icon: Icons.settings_outlined,
-            // A gear packs more ink into its square than a bell; drawn a
-            // step smaller, the two read as the same weight.
-            size: 22,
-            onPressed: () => context.push(Routes.settings),
-          ),
-          _HeaderAction(
+          // Settings is reached from the profile, so the bar carries only
+          // notifications beside the lockup.
+          WsHeaderAction(
             tooltip: 'Notifications',
             icon: Icons.notifications_none_outlined,
             badge: unread,
             onPressed: () => context.push(Routes.notifications),
           ),
-          // The same inset from the right edge as the avatar has from the
-          // left, so the bar is symmetrical.
-          const SizedBox(width: WsSpacing.md),
-          const SizedBox(width: WsSpacing.sm),
+          WsHeaderAction.trailingInset,
         ],
       ),
       body: ListView(
@@ -163,41 +149,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           const SizedBox(height: WsSpacing.md),
           QuickAccess(entrance: _entrance),
         ],
-      ),
-    );
-  }
-}
-
-/// One action in the dashboard's top bar. Both actions share this, so the
-/// two glyphs always match in size, weight and tap target.
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.size = 24,
-    this.badge = 0,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final double size;
-  final VoidCallback onPressed;
-
-  /// Unread count; nothing is drawn at zero.
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Badge(
-        isLabelVisible: badge > 0,
-        label: Text('$badge'),
-        backgroundColor: context.colors.primary,
-        textColor: context.colors.onPrimary,
-        child: Icon(icon, size: size, color: context.colors.onSurface),
       ),
     );
   }

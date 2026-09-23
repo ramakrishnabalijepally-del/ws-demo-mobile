@@ -10,6 +10,7 @@ import 'package:worksettle_mobile/shared/models/crs_profile.dart';
 import 'package:worksettle_mobile/shared/models/immigration_details.dart';
 import 'package:worksettle_mobile/shared/models/profile_section.dart';
 import 'package:worksettle_mobile/features/immigration/immigration.dart';
+import 'package:worksettle_mobile/features/profile/profile.dart';
 import 'package:worksettle_mobile/shared/shared.dart';
 
 void main() {
@@ -42,9 +43,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-      'the basic profile is on Overview, the CRS under Immigration '
-      'profile', (tester) async {
+  testWidgets('each profile has its own tab, the CRS under Immigration profile',
+      (tester) async {
     final container = await pumpApp(tester);
     // The score is asked for, not served; this test is about what the tab
     // shows once it exists.
@@ -52,7 +52,7 @@ void main() {
     await go(tester, container, Routes.profile);
 
     expect(find.text('Basic profile'), findsWidgets);
-    expect(find.widgetWithText(Tab, 'Basic profile'), findsNothing);
+    expect(find.widgetWithText(Tab, 'Basic profile'), findsOneWidget);
     expect(find.text('Immigration profile'), findsWidgets);
     expect(find.text('CRS score'), findsNothing);
 
@@ -352,5 +352,56 @@ void main() {
     expect(relativeToToday(DateTime(2027, 1, 20), today), 'in 4 months');
     expect(relativeToToday(DateTime(2026, 9, 26), today), 'in 10 days');
     expect(relativeToToday(DateTime(2026, 9, 1), today), '15 days ago');
+  });
+
+  testWidgets('every immigration profile card opens its own editor',
+      (tester) async {
+    final container = await pumpApp(tester, size: const Size(390, 4000));
+
+    Future<void> openCard(String title) async {
+      await go(tester, container, Routes.profile);
+      final tab = find.widgetWithText(Tab, 'Immigration profile');
+      await tester.ensureVisible(tab);
+      await tester.pumpAndSettle();
+      await tester.tap(tab);
+      await tester.pumpAndSettle();
+      final card = find.text(title).first;
+      await tester.ensureVisible(card);
+      await tester.pumpAndSettle();
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+    }
+
+    // Each card carries the chevron that says it opens something.
+    await go(tester, container, Routes.profile);
+    final tab = find.widgetWithText(Tab, 'Immigration profile');
+    await tester.ensureVisible(tab);
+    await tester.pumpAndSettle();
+    await tester.tap(tab);
+    await tester.pumpAndSettle();
+    for (final title in ['Passport', 'Status in Canada', 'Family in Canada']) {
+      final card = find.ancestor(
+        of: find.text(title).first,
+        matching: find.byType(WsCard),
+      );
+      expect(
+        find.descendant(
+          of: card.first,
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsOneWidget,
+        reason: title,
+      );
+    }
+
+    await openCard('Passport');
+    expect(find.byType(ProfileEditScreen), findsOneWidget);
+
+    await openCard('Status in Canada');
+    expect(find.byType(ProfileEditScreen), findsOneWidget);
+
+    await openCard('Family in Canada');
+    expect(find.byType(ProfileSectionScreen), findsOneWidget);
+    expect(find.text('Who in your family lives in Canada?'), findsOneWidget);
   });
 }

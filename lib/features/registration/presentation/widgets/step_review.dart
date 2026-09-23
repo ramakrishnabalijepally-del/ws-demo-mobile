@@ -69,7 +69,7 @@ class StepReview extends ConsumerWidget {
           rows: [
             ('Name', orDash('${draft.firstName} ${draft.lastName}'.trim())),
             ('Date of Birth', orDash(draft.dateOfBirth)),
-            ('Country of Origin', orDash(draft.countryOfOrigin)),
+            ('Country of Citizenship', orDash(draft.countryOfOrigin)),
           ],
         ),
         _ReviewSection(

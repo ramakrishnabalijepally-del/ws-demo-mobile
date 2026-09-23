@@ -1,7 +1,13 @@
 # WorkSettle Mobile — Plan
 
-**Status:** approved scope, not yet built · **Written:** 2026-09-08
+**Status:** built, and being reworked for a TestFlight release · **Written:**
+2026-09-08 · **Revised:** 2026-09-21
 **Companion:** [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) — the ordered build sequence
+
+> **Read §12 first.** The app has moved on from this plan in several places —
+> the bottom bar, the Immigration scores, the AI Agent tab and the Profile
+> tabs. §12 lists every change since the first build and is the current
+> truth wherever it disagrees with an earlier section.
 
 ---
 
@@ -51,25 +57,30 @@ Everything else in `.agents/rules/` stands.
 
 ## 3. Information architecture
 
-The design system fixes **five destinations for the life of the app**:
-**Home · Jobs · Immigration · Settlement · Profile** (§14). The screenshots show
-a 4-tab template nav (Home / Applications / Chat / Profile) — that is discarded.
-Applications, Saved Jobs and recruiter chat become **sub-features of Jobs**.
+The design system fixes **five destinations** (§14). The app keeps five, but
+**the AI Agent took Profile's place in the bottom bar**: the tabs are now
+**Home · Immigration · AI Agent · Jobs · Settlement**. Profile opens from the
+avatar at the top left of every tab, above the shell, so the bar stays put and
+Back returns to the tab you came from. The screenshots' 4-tab template nav is
+still discarded; Applications, Saved Jobs and recruiter chat are
+**sub-features of Jobs**.
 
 ```
 ┌─ Outside the shell (no bottom nav) ────────────────────────────┐
 │  Splash → Onboarding (3, dot rail) → Sign In / Sign Up /       │
 │  Forgot Password → Registration (7 steps, segment bar)         │
-│  AI Assistant (full surface, voice mode inverts to #000)       │
-│  Paywall (modal, reached only by touching a locked feature)    │
+│  Profile (from the avatar) · documents · goals · settings ·    │
+│    help — and anything opened from Profile, so Back returns    │
+│  Voice mode (inverts to #000) · Paywall (only from a lock)     │
 └────────────────────────────────────────────────────────────────┘
 ┌─ StatefulShellRoute — 5 tabs, each keeps its own stack ────────┐
-│  Home        dashboard · hub grid · notifications · tips       │
+│  Home        dashboard · hub grid · notifications              │
+│  Immigration Federal score (CRS) · PNP scores by province ·    │
+│              streams · programs · compare                      │
+│  AI Agent    the chat itself — globe + FAQ empty state         │
 │  Jobs        search · details · apply · applications · saved   │
 │              · recruiter chat                                   │
-│  Immigration CRS · PNP · eligibility · programs · compare      │
 │  Settlement  checklist · appointments · resources              │
-│  Profile     profile · documents · goals · settings · help     │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,8 +94,8 @@ except Job Matching.
 | Job Matching | Jobs | `#E4101B` / `#FBE7E8` |
 | Profile Matching | Profile | `#111111` / `#F4F4F4` |
 | Immigration Eligibility | Immigration | `#111111` / `#F4F4F4` |
-| CRS Predictor | Immigration | `#111111` / `#F4F4F4` |
-| AI Voice & Chat | full-screen route | `#111111` / `#F4F4F4` |
+| CRS score (was CRS Predictor) | Immigration | `#111111` / `#F4F4F4` |
+| AI Voice & Chat | AI Agent tab | `#111111` / `#F4F4F4` |
 | Smart Checklist | Settlement | `#111111` / `#F4F4F4` |
 | Appointments | Settlement | `#111111` / `#F4F4F4` |
 
@@ -144,6 +155,10 @@ Segment bar across the top throughout (6 segments, §13).
 
 The ring is the **only ring in the product** and reports completeness, never a
 score (§13).
+
+**Since built (§12):** the bar carries only the notifications bell — Settings
+moved off Home and is reached from Profile. Tips (D3, D4) are off the
+dashboard, and the Explore section offers Immigration, Jobs and Settlement.
 
 ### E · Jobs — 8 screens
 | # | Screen | Source |
@@ -220,6 +235,12 @@ AI assistant, different data.
 Every result closes with the provisional-disclaimer slot (§20) — a component
 requirement, not per-screen copy.
 
+**Since built (§12):** the stepped calculator (J3–J7) is gone — the CRS is
+calculated from the profile. J1 now holds two groups, **Federal score** and
+**PNP score**, and every score is *asked for*: "Get my score" opens a status
+screen (J2) that lists what is filled in and what is not, and only calculates
+once nothing is missing. PNP scores are generated **one province at a time**.
+
 ### K · Settlement — 6 screens
 | # | Screen | Source |
 |---|---|---|
@@ -242,13 +263,22 @@ requirement, not per-screen copy.
 | L7 | Voice answer | §15 |
 | L8 | Saved conversations | §19 |
 
+**Since built (§12):** the AI Agent tab *is* the chat — there is no hub screen
+in front of it. L1's empty state is the splash globe, the heading "Ask
+**WorkSettle** AI anything" and a **Frequently asked questions** list of the
+four scripted questions.
+
 ### M · Profile — 8 screens
 | # | Screen | Source |
 |---|---|---|
 | M1 | Profile — avatar, verified tick, fields | 222421 |
 | M2 | Change avatar sheet | 222429 |
-| M3–M7 | Tabs: Overview · Immigration · Jobs · Documents · Goals | §22 board 2 |
+| M3–M7 | Tabs: Overview · Immigration profile · Jobs · Documents | §22 board 2 |
 | M8 | Document upload | §23 "not yet defined" — built minimally, flagged |
+
+**Since built (§12):** the Basic profile tab is gone (Overview shows it in
+full). Every card on the Immigration profile carries a chevron and opens that
+section's own editor.
 
 ### N · Settings & help — 8 screens
 | # | Screen | Source |
@@ -412,35 +442,35 @@ screens match the spec rather than inventing figures.
 8. **French classes, video calls and document upload** appear in the screenshots
    but §23 lists document upload as "not yet defined". Built minimally, marked
    `// TODO(backend):`.
+9. **The provincial point values need an official check.** The AAIP, BC PNP
+   SIRS, SINP and MPNP grids were checked in September 2026 against
+   consultant calculators and write-ups, because the Manitoba and Saskatchewan
+   official pages blocked automated access. Confirm each against the
+   province's own grid before release. See
+   `lib/shared/utils/pnp_calculator.dart`.
+10. **"WorkSettle" in red in the chat heading is an agreed exception.**
+    `08-design.md` reserves red text for "Work & Immigration" in the
+    positioning line. The chat heading colours "WorkSettle" with the
+    `redOnSurface` token at the product owner's request — not the logo hex.
+11. **The Settlement photo on Home is a demo stand-in** (Wikimedia Commons,
+    CC BY-SA). It needs attribution or client photography before release.
 
 ---
 
-## 9. Known constraint — no Flutter toolchain here
+## 9. Toolchain — resolved
 
-`flutter` and `dart` are **not installed** on this machine or in the WSL
-distribution. Consequences:
+*Originally: "no Flutter toolchain here".* Flutter **3.47.4** (Dart 3.13) is now
+installed through Homebrew, and the verification gate runs for real:
+`dart format`, `flutter analyze` and `flutter test` all pass.
 
-- Every file will be written correctly by hand, following the SDK's APIs.
-- **`flutter analyze`, `dart format` and `flutter test` cannot be run**, so the
-  verification gate in `.agents/rules/06-quality-and-verification.md` cannot be
-  completed by me. I will not claim it passed.
-- `flutter create` cannot generate the `android/` and `ios/` runner folders, so
-  the repo will contain `lib/`, `pubspec.yaml`, `analysis_options.yaml`,
-  `assets/` and `test/` — everything except the native shells.
-
-**To run it**, install Flutter, then from the repo root:
-
-```bash
-flutter create . --project-name worksettle_mobile --platforms=android,ios
-flutter pub get
-dart format lib test
-flutter analyze
-flutter run
-```
-
-`flutter create .` fills in the native folders **without touching existing
-`lib/` files**. Expect the first `flutter analyze` to surface typos that no
-amount of care substitutes for a compiler — those get fixed in one pass.
+- **`ios/` exists** — scaffolded with `flutter create --platforms=ios .` for the
+  TestFlight release, with explicit approval (the rules otherwise keep this
+  repo Dart-only). See §13.
+- **There is no `android/` folder in this repo.** The demo repo
+  (`ws-demo-mobile`) carries its own for its APK build. Add one here only when
+  an Android release is planned, with the same bundle ID.
+- Web runs with `flutter run -d chrome`; the demo repo publishes the web build
+  to GitHub Pages on every push to `main`.
 
 ---
 
@@ -480,4 +510,94 @@ Detail, file lists and per-phase checklists live in
 - Confetti and typing dots honour reduced motion.
 - Every non-functional control marked `// TODO(backend):` and listed in the
   summary.
-- The verification gate reported honestly, including that I could not run it.
+- The verification gate run and reported honestly — it now can be.
+
+---
+
+## 12. Changes since the first build
+
+What changed after the 2026-09-08 build, newest area first. Where this
+disagrees with an earlier section, this wins.
+
+### Navigation
+- **AI Agent replaced Profile in the bottom bar.** Tabs: Home · Immigration ·
+  AI Agent · Jobs · Settlement. Profile opens from the avatar on every tab.
+- **Screens opened from Profile open above the tab bar**, so Back returns to
+  Profile rather than jumping tabs.
+- **The splash hands over to the onboarding slides**, not sign in.
+
+### Home
+- **Settings is off the Home bar.** Only the notifications bell remains;
+  Settings opens from the gear on Profile.
+- **The Profile gear sits exactly where the Home bell does** — same bar
+  height, same right inset, same button. Both use the shared
+  `WsHeaderAction`.
+- Tips for you is removed; Explore offers Immigration, Jobs and Settlement.
+
+### Immigration — scores are asked for, never served
+- **Two groups: Federal score (CRS) and PNP score.** The Where you stand list
+  and the Provincial Nominee Programs row are gone from the tab.
+- **The CRS is calculated from the profile** — no stepped calculator. "Get my
+  CRS score" opens a **status screen**: what is filled in, what is not, each
+  row opening the form it is answered in. The score is calculated only once
+  nothing is missing; the list updates as soon as a form saves.
+- **The number is hidden until it is asked for**, including in save messages
+  and the section forms' save bar.
+- **Family in Canada is its own profile section.** Additional factors asks
+  only about a provincial or territorial nomination.
+- **PNP scores are generated one province at a time.** Each province with a
+  grid has its own status screen and asks only the questions its grid scores.
+  Answers are stored once, so a shared fact updates every province.
+- **Provincial factors** — family, work and study in a province, and a job
+  offer with per-province follow-ups — replace the earlier "ties to a
+  province". Follow-ups appear only when they change a score.
+- **The grids were corrected against published versions** (see §8 item 9):
+  location bonuses follow where you studied or worked, not where you live;
+  Alberta counts only a parent, sibling or child; Alberta scores French below
+  English; a trade certificate beats a shorter diploma; BC gives no
+  experience points under a year; Manitoba's out-of-province penalty applies
+  even alongside Manitoba ties.
+- "CRS Predictor" is renamed **CRS score** throughout.
+
+### AI Agent
+- **The tab opens straight into the chat.** The hub that listed what the
+  agent noticed, its capabilities, Appointments and Voice mode is removed;
+  their routes remain.
+- **Empty state:** the splash globe (it stops under reduced motion), "Ask
+  **WorkSettle** AI anything" with "WorkSettle" in red (§8 item 10), and a
+  **Frequently asked questions** list.
+- **The FAQ lists only questions with a scripted answer** — four of them.
+  Unscripted questions fall back to the CRS answer, so listing one would look
+  like a bug. More need writing before the list grows.
+
+### Profile
+- Tabs: **Overview · Immigration profile · Jobs · Documents** — Basic profile
+  is removed.
+- **Every Immigration profile card has a chevron** and opens its own editor:
+  About you, Education, Work experience, Language tests, Family in Canada and
+  Your spouse open their section forms; Passport and Status in Canada open
+  Edit profile's immigration tab, where they are the first two sections.
+- The CRS and PNP cards are readouts; scores are generated in Immigration.
+
+---
+
+## 13. Release — TestFlight
+
+The app ships to clients through **TestFlight**, as an update to the App Store
+Connect record a senior developer already created.
+
+| | |
+| --- | --- |
+| **Bundle ID** | `com.hvrlab.Worksettle` — iOS and Android alike |
+| **Team** | hvrlab — the releaser needs App Manager access or higher |
+| **Build number** | must be higher than the last one on TestFlight; set in `pubspec.yaml` (`version: x.y.z+N`) |
+| **App icon** | still Flutter's default; not required for this build |
+| **CocoaPods** | installed and `pod install` run, though no package needs a pod. `ios/Flutter/Debug.xcconfig` and `Release.xcconfig` include the Pods xcconfigs, matching the senior developer's project |
+
+**Steps.** Open `ios/Runner.xcworkspace` (never the `.xcodeproj`) → sign in
+under Xcode ▸ Settings ▸ Accounts → Runner target ▸ Signing & Capabilities:
+automatic signing, team hvrlab → set the version in `pubspec.yaml` and run
+`flutter build ios --config-only` → choose *Any iOS Device (arm64)* → Product ▸
+Archive → Organizer ▸ Distribute App ▸ App Store Connect ▸ Upload → in App
+Store Connect ▸ TestFlight, answer export compliance ("None of the
+algorithms") and add the build to the testers' group.

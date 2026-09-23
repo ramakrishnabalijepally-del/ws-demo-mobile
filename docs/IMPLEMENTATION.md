@@ -1,12 +1,10 @@
 # WorkSettle Mobile — Implementation
 
-> **Built 2026-09-08.** Every phase below is written; every box is ticked
-> because the file exists and does what the line says. **Nothing has been
-> compiled or run** — Flutter is not installed in this environment (PLAN
-> section 9), so `flutter analyze`, `dart format` and `flutter test` have
-> not been executed and are not being reported as passing. Expect the first
-> analyze pass to surface `prefer_const_constructors` hints and a handful of
-> import nits; they are a single mechanical pass.
+> **Built 2026-09-08 · revised 2026-09-21.** Phases 0–14 are the original
+> build. **Phase 15** records the rework since, and is the current truth where
+> it disagrees with an earlier phase. Flutter is now installed (PLAN §9):
+> `dart format`, `flutter analyze` and `flutter test` (257 tests) pass, and
+> `flutter build web` compiles.
 
 The ordered build. Work top to bottom; each phase depends on the ones above it.
 Tick boxes as they land. Scope, IA and the screen inventory are in
@@ -157,7 +155,8 @@ Not built as separate files, deliberately: the module glyphs live on the
       the assistant and the paywall are full-screen pushes above it.
 - [x] `lib/app/router/shell_scaffold.dart` — `NavigationBar`, five fixed
       destinations, filled icon active in Settle Red, outlined at rest in
-      Grey 500, labels always shown.
+      Grey 500, labels always shown. *Now Home · Immigration · AI Agent ·
+      Jobs · Settlement — see Phase 15.*
 - [x] `lib/app/router/transitions.dart` — one page transition, defined once.
 
 ---
@@ -185,6 +184,7 @@ Not built as separate files, deliberately: the module glyphs live on the
 - [x] `features/home/hub/` — D5 seven modules, D6 module shell (60 px circle
       header).
 - [x] Mock: `mock_notifications.dart`, `mock_tips.dart`, `mock_modules.dart`.
+- *Since: Settings off the bar, Tips off the dashboard — see Phase 15.*
 
 ---
 
@@ -223,6 +223,8 @@ Not built as separate files, deliberately: the module glyphs live on the
 - [x] Every result carries `WsDisclaimer`.
 - [x] Mock: `mock_crs.dart`, `mock_provinces.dart`, `mock_streams.dart`,
       `mock_programs.dart`.
+- *Since: the stepped calculator is replaced by a profile-driven score behind
+  a status screen, and PNP is scored per province — see Phase 15.*
 
 ---
 
@@ -243,6 +245,8 @@ Not built as separate files, deliberately: the module glyphs live on the
 - [x] `features/assistant/saved/` — L8.
 - [x] Mock: `mock_conversations.dart` — 4 scripted exchanges with per-step
       timeline text.
+- *Since: the AI Agent tab opens the chat directly; L1 is the globe and a
+  frequently-asked-questions list — see Phase 15.*
 
 ---
 
@@ -257,6 +261,8 @@ Not built as separate files, deliberately: the module glyphs live on the
       "Gawean" to WorkSettle.
 - [x] Mock: `mock_documents.dart`, `mock_faq.dart`, `mock_legal.dart`,
       `mock_settings.dart`.
+- *Since: Profile left the bottom bar; Basic profile tab removed; chevrons on
+  every Immigration profile card — see Phase 15.*
 
 ---
 
@@ -285,19 +291,74 @@ Not built as separate files, deliberately: the module glyphs live on the
 
 ---
 
+## Phase 15 — Rework after the first build · Sept 2026
+
+Grouped by area. Ticked items are built, analyzed and tested.
+
+**Navigation**
+- [x] AI Agent replaces Profile in the bottom bar; Profile opens from the
+      avatar, above the shell.
+- [x] Screens opened from Profile open above the tab bar, so Back returns to
+      Profile (`test/app/back_navigation_test.dart`).
+- [x] Splash hands over to onboarding, not sign in.
+
+**Home**
+- [x] Settings removed from the Home bar; reached from Profile.
+- [x] `WsHeaderAction` (shared) — the Home bell and Profile gear share one
+      button, bar height and right inset, so the gear lands where the bell
+      was. A test measures both centres.
+- [x] Tips removed; Explore offers Immigration, Jobs and Settlement.
+
+**Immigration**
+- [x] Tab groups: Federal score and PNP score.
+- [x] CRS status screen — filled vs. missing, each row opens its form,
+      calculates only when complete (`crs_screens.dart`,
+      `widgets/score_status_list.dart`).
+- [x] Score hidden until asked for, including save messages and save bar.
+- [x] `ProfileSection.family` added; Additional factors is nomination only.
+- [x] PNP scored per province, each with its own status screen and questions
+      (`controllers/pnp_status.dart`, `widgets/pnp_province_grid.dart`).
+- [x] `ProvincialFactors` model and Provincial factors form — family, work,
+      study, job offer, with conditional follow-ups.
+- [x] Grids corrected against published versions (`pnp_calculator.dart`,
+      `test/shared/utils/pnp_calculator_test.dart`).
+- [ ] **Confirm every provincial point value against the official grid**
+      (PLAN §8 item 9).
+
+**AI Agent**
+- [x] Tab opens the chat directly; the hub screen is removed.
+- [x] Empty state: `WsGlobe`, "Ask WorkSettle AI anything" with "WorkSettle"
+      in `redOnSurface`, and a Frequently asked questions list built from the
+      scripted answers (`mockFrequentlyAskedQuestions`).
+- [ ] Write scripted answers for the other suggested questions (resume, PR
+      timeline, partner work, ECA) so the FAQ can list them.
+
+**Profile**
+- [x] Basic profile tab removed.
+- [x] Chevrons on every Immigration profile card, each opening its editor.
+
+**iOS release** (PLAN §13)
+- [x] `ios/` scaffolded; bundle ID `com.hvrlab.Worksettle`.
+- [x] Pods xcconfigs included in `ios/Flutter/Debug.xcconfig` and
+      `Release.xcconfig`; `pod install` run.
+- [ ] Team access (hvrlab) → signing → build number above the last upload →
+      archive → upload → TestFlight testers.
+- [ ] App icon (optional for this build).
+
+**Testing note.** `WsGlobe` turns forever, so tests that reach the chat's
+empty state switch on reduced motion before calling `pumpAndSettle`.
+
+---
+
 ## Running it
 
-Flutter is **not installed** in this environment (PLAN §9), so nothing below has
-been executed by me and I will not report it as passing.
-
 ```bash
-flutter create . --project-name worksettle_mobile --platforms=android,ios
 flutter pub get
-dart format lib test
+dart format --set-exit-if-changed lib test
 flutter analyze
 flutter test
-flutter run
+flutter run -d chrome --web-port=8080    # web
+flutter build ios --config-only          # after changing the version
 ```
 
-Expect the first `flutter analyze` to surface a handful of typos and import
-slips; they get fixed in a single pass.
+For TestFlight, archive from `ios/Runner.xcworkspace` in Xcode — see PLAN §13.

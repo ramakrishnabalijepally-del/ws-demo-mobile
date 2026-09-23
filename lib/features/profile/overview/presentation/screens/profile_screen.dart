@@ -18,11 +18,11 @@ import '../../../data/mock_profile.dart';
 
 /// M1, M3–M7 — the Profile screen and its five tabs.
 ///
-/// Overview · Immigration profile · Jobs · Documents.
+/// Overview · Basic profile · Immigration profile · Jobs · Documents.
 ///
-/// Overview carries the basic profile in full and the immigration profile in
-/// summary, each in its own card with its own Edit button. There is no
-/// separate Basic profile tab: it would only repeat the Overview card. **Every field a tab shows is a field the edit screen edits**, so
+/// Overview summarises both profiles, each in its own card with its own Edit
+/// button and a link to its tab. **Every field a tab shows is a field the edit
+/// screen edits**, so
 /// the reader never opens Edit and finds a different set of questions. The CRS
 /// Predictor sits under Immigration profile, beside the passport and status it
 /// belongs with. The active tab is marked by a 2.5 px red underline — **the
@@ -37,7 +37,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this);
+  late final TabController _tabs = TabController(length: 5, vsync: this);
 
   @override
   void dispose() {
@@ -51,13 +51,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     return Scaffold(
       appBar: AppBar(
+        // The same height and right inset as Home's bar, so the gear lands
+        // exactly where the notifications bell was.
+        toolbarHeight: WsHeaderAction.toolbarHeight,
         title: const Text('Profile'),
         actions: [
-          IconButton(
+          WsHeaderAction(
             tooltip: 'Settings',
+            icon: Icons.settings_outlined,
             onPressed: () => context.push(Routes.settings),
-            icon: const Icon(Icons.settings_outlined),
           ),
+          WsHeaderAction.trailingInset,
         ],
         bottom: TabBar(
           controller: _tabs,
@@ -65,6 +69,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: 'Overview'),
+            Tab(text: 'Basic profile'),
             Tab(text: 'Immigration profile'),
             Tab(text: 'Jobs'),
             Tab(text: 'Documents'),
@@ -80,8 +85,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               children: [
                 _OverviewTab(
                   candidate: candidate,
-                  onOpenImmigration: () => _tabs.animateTo(1),
+                  onOpenBasic: () => _tabs.animateTo(1),
+                  onOpenImmigration: () => _tabs.animateTo(2),
                 ),
+                _BasicProfileTab(candidate: candidate),
                 _ImmigrationProfileTab(candidate: candidate),
                 const _JobsTab(),
                 const _DocumentsTab(),
@@ -260,17 +267,17 @@ const EdgeInsets _tabPadding = EdgeInsets.fromLTRB(
   WsSpacing.xxxl,
 );
 
-/// Overview — both profiles as cards, each opening its own editor.
-///
-/// The basic profile is shown here in full, so it has no tab of its own. The
-/// immigration card is a summary of the tab behind it; its link moves there.
+/// Overview — both profiles as summary cards, each opening its own editor and
+/// linking to its own tab.
 class _OverviewTab extends StatelessWidget {
   const _OverviewTab({
     required this.candidate,
+    required this.onOpenBasic,
     required this.onOpenImmigration,
   });
 
   final Candidate candidate;
+  final VoidCallback onOpenBasic;
   final VoidCallback onOpenImmigration;
 
   @override
@@ -285,8 +292,10 @@ class _OverviewTab extends StatelessWidget {
           child: _OverviewCard(
             icon: Icons.person_outline_rounded,
             title: 'Basic profile',
+            openLabel: 'See the full basic profile',
             onEdit: () => context.push(Routes.profileEdit),
-            facts: basicProfileFacts(candidate),
+            onOpen: onOpenBasic,
+            facts: _basicSummaryFacts(candidate),
           ),
         ),
         const SizedBox(height: WsSpacing.md),
@@ -389,29 +398,160 @@ class _OverviewCard extends StatelessWidget {
   }
 }
 
-/// The Basic profile fields, in one list so the Overview card and the edit
-/// form can never drift apart.
-List<Widget> basicProfileFacts(Candidate candidate) {
-  final code = WsProvinceMark.countryCodeFor(candidate.countryOfOrigin);
+/// The Basic profile — everything registration asks, grouped the way the
+/// edit form asks it. Every card opens that form.
+class _BasicProfileTab extends StatelessWidget {
+  const _BasicProfileTab({required this.candidate});
 
-  return [
-    _Fact(label: 'Email', value: candidate.email),
-    _Fact(label: 'Phone', value: candidate.phone),
-    _Fact(label: 'Date of birth', value: candidate.dateOfBirth),
-    _Fact(
-      label: 'From',
-      value: candidate.countryOfOrigin,
-      mark: code == null
-          ? null
-          : WsProvinceMark.country(
-              code: code,
-              label: candidate.countryOfOrigin,
-              size: 24,
+  final Candidate candidate;
+
+  @override
+  Widget build(BuildContext context) {
+    final birth = candidate.birthDate;
+    final age = birth == null ? null : ageOn(birth, DateTime.now());
+    void edit() => context.push(Routes.profileEdit);
+
+    return ListView(
+      padding: _tabPadding,
+      children: [
+        _TabHeading(title: 'Basic profile', onEdit: edit),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.person_outline_rounded,
+          title: 'Personal details',
+          onOpen: edit,
+          facts: [
+            _Fact(
+              label: 'Date of birth',
+              value: _orNotAdded(candidate.dateOfBirth),
+              caption: age == null ? null : 'Age $age',
             ),
+            _citizenshipFact(candidate, last: true),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.mail_outline_rounded,
+          title: 'Contact',
+          onOpen: edit,
+          facts: [
+            _Fact(label: 'Email', value: _orNotAdded(candidate.email)),
+            _Fact(
+              label: 'Phone',
+              value: _orNotAdded(candidate.phone),
+              last: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.place_outlined,
+          title: 'Location',
+          onOpen: edit,
+          facts: [
+            _Fact(label: 'City', value: _orNotAdded(candidate.city)),
+            _provinceFact(candidate, last: true),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.explore_outlined,
+          title: 'Profile type',
+          onOpen: edit,
+          facts: [
+            _Fact(
+              label: 'You are a',
+              value: _orNotAdded(candidate.profileType),
+              stacked: true,
+              last: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.flag_outlined,
+          title: 'Your goals',
+          onOpen: edit,
+          facts: [
+            _Fact(
+              label: '${candidate.goals.length} selected',
+              value: candidate.goals.isEmpty
+                  ? _notAddedYet
+                  : candidate.goals.join('\n'),
+              stacked: true,
+              last: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: WsSpacing.md),
+        _FactCard(
+          icon: Icons.work_outline_rounded,
+          title: 'Job interests',
+          onOpen: edit,
+          facts: [
+            _Fact(
+              label: '${candidate.jobCategories.length} selected',
+              value: candidate.jobCategories.isEmpty
+                  ? _notAddedYet
+                  : candidate.jobCategories.join(', '),
+              stacked: true,
+              last: true,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The Overview card's summary of the Basic profile; the tab has the rest.
+List<Widget> _basicSummaryFacts(Candidate candidate) {
+  final location = [candidate.city, candidate.province]
+      .where((part) => part.isNotEmpty)
+      .join(', ');
+  return [
+    _Fact(label: 'Email', value: _orNotAdded(candidate.email)),
+    _Fact(label: 'Phone', value: _orNotAdded(candidate.phone)),
+    _Fact(label: 'Location', value: _orNotAdded(location)),
+    _Fact(
+      label: 'You are a',
+      value: _orNotAdded(candidate.profileType),
+      last: true,
     ),
-    _Fact(label: 'You are a', value: candidate.profileType, last: true),
   ];
 }
+
+_Fact _citizenshipFact(Candidate candidate, {bool last = false}) {
+  final code = WsProvinceMark.countryCodeFor(candidate.countryOfOrigin);
+  return _Fact(
+    label: 'Citizenship',
+    value: _orNotAdded(candidate.countryOfOrigin),
+    mark: code == null
+        ? null
+        : WsProvinceMark.country(
+            code: code,
+            label: candidate.countryOfOrigin,
+            size: 24,
+          ),
+    last: last,
+  );
+}
+
+_Fact _provinceFact(Candidate candidate, {bool last = false}) {
+  final code = WsProvinceMark.codeFor(candidate.province);
+  return _Fact(
+    label: 'Province',
+    value: _orNotAdded(candidate.province),
+    mark: code == null
+        ? null
+        : WsProvinceMark(code: code, label: candidate.province, size: 24),
+    last: last,
+  );
+}
+
+String _orNotAdded(String value) => value.isEmpty ? _notAddedYet : value;
+
+const String _notAddedYet = 'Not added yet';
 
 /// Passport, status in Canada and family, then the federal and PNP scores —
 /// everything immigration in one place.
@@ -444,12 +584,17 @@ class _ImmigrationProfileTab extends StatelessWidget {
 
     String orNotAdded(String value) => value.isEmpty ? _notAdded : value;
 
+    // Passport and status are only edited on Edit profile's immigration tab,
+    // where they are the first two sections.
+    void editImmigrationDetails() =>
+        context.push('${Routes.profileEdit}?tab=immigration');
+
     return ListView(
       padding: _tabPadding,
       children: [
         _TabHeading(
           title: 'Immigration profile',
-          onEdit: () => context.push('${Routes.profileEdit}?tab=immigration'),
+          onEdit: editImmigrationDetails,
         ),
         const SizedBox(height: WsSpacing.md),
         // The order the reader is asked to think in: who you are, what you
@@ -464,6 +609,7 @@ class _ImmigrationProfileTab extends StatelessWidget {
         _FactCard(
           icon: Icons.badge_outlined,
           title: 'Passport',
+          onOpen: editImmigrationDetails,
           facts: [
             _Fact(
               label: 'Number',
@@ -487,6 +633,7 @@ class _ImmigrationProfileTab extends StatelessWidget {
         _FactCard(
           icon: Icons.assignment_ind_outlined,
           title: 'Status in Canada',
+          onOpen: editImmigrationDetails,
           facts: [
             _Fact(
               label: 'Status',
@@ -511,6 +658,7 @@ class _ImmigrationProfileTab extends StatelessWidget {
         _FactCard(
           icon: Icons.family_restroom_rounded,
           title: 'Family in Canada',
+          onOpen: () => _CrsAnswers.edit(context, ProfileSection.family),
           facts: [
             _Fact(
               label: 'Living in Canada',
